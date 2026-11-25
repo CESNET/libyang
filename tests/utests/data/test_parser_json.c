@@ -220,6 +220,12 @@ test_leaf(void **state)
     assert_int_equal(LY_EINVAL, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     CHECK_LOG_CTX("Annotation definition for attribute \"a:hi\nt\" not found.", "/a:foo/@a:hi\nt", 1);
 
+    /* escaped metadata member name */
+    data = "{\"a:foo\":\"xxx\",\"@a:foo\":{\"a:hin\\u0074\":1}}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    CHECK_LYD_META(tree->meta, 1, "hint", 0, 1,  INT8, "1", 1);
+    lyd_free_all(tree);
+
     data = "{\"a:foo\": null}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID, "Invalid non-string-encoded string value \"\".", "/a:foo", 1);
     CHECK_PARSE_LYD(data, LYD_PARSE_JSON_NULL, LYD_VALIDATE_PRESENT, tree);
@@ -369,6 +375,14 @@ test_anydata(void **state)
     tree = tree->next;
     CHECK_LYSC_NODE(tree->schema, NULL, 0, LYS_STATUS_CURR | LYS_CONFIG_R | LYS_SET_CONFIG, 1, "any",
             1, LYS_ANYDATA, 0, 0, NULL, 0);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
+    lyd_free_all(tree);
+
+    /* member names that need encoding */
+    data = "{\"a:any\":{\"x\\\":\\\"v\\\"},\\\"a:foo\\\":\\\"str\":\"y\",\"m\\\\d:n\\\"\":\"z\"}}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    assert_non_null(tree);
+    tree = tree->next;
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
 
@@ -964,6 +978,41 @@ test_restconf_rpc(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
     lyd_free_all(envp);
+
+    /* input envelope with a value other than an object */
+    assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX, "/ietf-netconf-nmda:edit-data", NULL, 0, &tree));
+    data = "{\"ietf-netconf-nmda:input\":[{}]}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_JSON, LYD_TYPE_RPC_RESTCONF, LYD_PARSE_STRICT,
+            &envp, NULL));
+    assert_null(envp);
+    CHECK_LOG_CTX("Expecting JSON object but array found.", NULL, 1);
+    ly_in_free(in, 0);
+
+    data = "{\"ietf-netconf-nmda:input\":[]}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_JSON, LYD_TYPE_RPC_RESTCONF, LYD_PARSE_STRICT,
+            &envp, NULL));
+    assert_null(envp);
+    CHECK_LOG_CTX("Expecting JSON object but array found.", NULL, 1);
+    ly_in_free(in, 0);
+
+    data = "{\"ietf-netconf-nmda:input\":\"x\"}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_JSON, LYD_TYPE_RPC_RESTCONF, LYD_PARSE_STRICT,
+            &envp, NULL));
+    assert_null(envp);
+    CHECK_LOG_CTX("Expecting JSON object but string found.", NULL, 1);
+    ly_in_free(in, 0);
+
+    data = "{\"ietf-netconf-nmda:input\":null}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, tree, in, LYD_JSON, LYD_TYPE_RPC_RESTCONF, LYD_PARSE_STRICT,
+            &envp, NULL));
+    assert_null(envp);
+    CHECK_LOG_CTX("Expecting JSON object but null found.", NULL, 1);
+    ly_in_free(in, 0);
+    lyd_free_all(tree);
 }
 
 static void
@@ -990,6 +1039,19 @@ test_restconf_notification(void **state)
     lyd_free_all(tree);
     lyd_free_all(ntf);
 
+    /* escaped envelope member name */
+    data = "{\"ietf-restconf:notificatio\\u006e\":{\"eventTime\":\"2013-12-21T00:01:00Z\",\"a:n2\":{}}}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_RESTCONF, LYD_PARSE_STRICT,
+            &tree, &ntf));
+    ly_in_free(in, 0);
+
+    data = "{\"ietf-restconf:notification\":{\"eventTime\":\"2013-12-21T00:01:00Z\"}}";
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
+
+    lyd_free_all(tree);
+    lyd_free_all(ntf);
+
     /* wrong order */
     data = "{\"ietf-restconf:notification\":{\"a:n2\":{},\"eventTime\":\"2013-12-21T00:01:00Z\"}}";
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
@@ -1008,6 +1070,15 @@ test_restconf_notification(void **state)
     UTEST_LOG_CTX_CLEAN;
     ly_in_free(in, 0);
     lyd_free_all(tree);
+
+    /* notification envelope with a value other than an object */
+    data = "{\"ietf-restconf:notification\":[]}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_JSON, LYD_TYPE_NOTIF_RESTCONF, LYD_PARSE_STRICT,
+            &tree, &ntf));
+    assert_null(tree);
+    CHECK_LOG_CTX("Expecting JSON object but array found.", NULL, 1);
+    ly_in_free(in, 0);
 }
 
 static void
@@ -1030,6 +1101,17 @@ test_restconf_reply(void **state)
     CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
     lyd_free_all(tree);
     lyd_free_all(envp);
+
+    /* output envelope with a value other than an object */
+    assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX, "/a:c/act", NULL, 0, &tree));
+    data = "{\"a:output\":[1]}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, lyd_child(tree), in, LYD_JSON, LYD_TYPE_REPLY_RESTCONF,
+            LYD_PARSE_STRICT, &envp, NULL));
+    assert_null(envp);
+    CHECK_LOG_CTX("Expecting JSON object but array found.", NULL, 1);
+    ly_in_free(in, 0);
+    lyd_free_all(tree);
 }
 
 static void
@@ -1064,6 +1146,43 @@ test_parent(void **state)
     lyd_free_tree(tree);
 }
 
+static void
+test_union_leafref(void **state)
+{
+    struct lyd_node *tree;
+    const char *data, *schema;
+
+    schema =
+            "module b {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:example:b\";\n"
+            "  prefix b;\n"
+            "\n"
+            "  leaf t {\n"
+            "    type uint8;\n"
+            "  }\n"
+            "  leaf d {\n"
+            "    type union {\n"
+            "      type leafref {\n"
+            "        path \"/b:t\";\n"
+            "      }\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "  leaf y {\n"
+            "    when \"/b:d = '01'\";\n"
+            "    type string;\n"
+            "  }\n"
+            "}\n";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data = "{\"b:d\":\"01\",\"b:y\":\"z\"}";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -1086,6 +1205,7 @@ main(void)
         UTEST(test_restconf_reply, setup),
         UTEST(test_metadata, setup),
         UTEST(test_parent, setup),
+        UTEST(test_union_leafref),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

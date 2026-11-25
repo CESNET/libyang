@@ -3728,6 +3728,90 @@ test_yin_parse_module(void **state)
 }
 
 static void
+test_yin_parse_type_substmt_exts(void **state)
+{
+    const char *yin_data;
+    struct lys_module *mod = NULL;
+    const struct lysp_node_leaf *leaf;
+    const struct lysp_type *type;
+
+    yin_data =
+            "<module name=\"type-exts-ext\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "  <namespace uri=\"urn:type-exts-ext\"/>"
+            "  <prefix value=\"e\"/>"
+            "  <extension name=\"c-define\"><argument name=\"name\"/></extension>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, NULL));
+
+    yin_data =
+            "<module name=\"type-exts\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:e=\"urn:type-exts-ext\">"
+            "  <yang-version value=\"1.1\"/>"
+            "  <namespace uri=\"urn:type-exts\"/>"
+            "  <prefix value=\"t\"/>"
+            "  <import module=\"type-exts-ext\"><prefix value=\"e\"/></import>"
+            "  <leaf name=\"d\">"
+            "    <type name=\"decimal64\">"
+            "      <fraction-digits value=\"2\"><e:c-define name=\"FD\"/></fraction-digits>"
+            "      <e:c-define name=\"T1\"/>"
+            "      <e:c-define name=\"T2\"/>"
+            "    </type>"
+            "  </leaf>"
+            "  <leaf name=\"i\">"
+            "    <type name=\"instance-identifier\">"
+            "      <require-instance value=\"true\"><e:c-define name=\"RI\"/></require-instance>"
+            "      <e:c-define name=\"T3\"/>"
+            "    </type>"
+            "  </leaf>"
+            "  <leaf name=\"en\">"
+            "    <type name=\"enumeration\">"
+            "      <enum name=\"a\">"
+            "        <value value=\"1\"><e:c-define name=\"V\"/></value>"
+            "        <e:c-define name=\"E1\"/>"
+            "      </enum>"
+            "    </type>"
+            "  </leaf>"
+            "  <leaf name=\"b\">"
+            "    <type name=\"bits\">"
+            "      <bit name=\"a\">"
+            "        <position value=\"0\"><e:c-define name=\"P\"/></position>"
+            "        <e:c-define name=\"B1\"/>"
+            "      </bit>"
+            "    </type>"
+            "  </leaf>"
+            "</module>";
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, yin_data, LYS_IN_YIN, &mod));
+
+    leaf = (const struct lysp_node_leaf *)mod->parsed->data;
+    type = &leaf->type;
+    assert_int_equal(3, LYA_COUNT(type->exts));
+    assert_int_equal(LY_STMT_FRACTION_DIGITS, type->exts[0].parent_stmt);
+    assert_string_equal("FD", type->exts[0].argument);
+    assert_string_equal("T1", type->exts[1].argument);
+    assert_string_equal("T2", type->exts[2].argument);
+
+    leaf = (const struct lysp_node_leaf *)leaf->next;
+    type = &leaf->type;
+    assert_int_equal(2, LYA_COUNT(type->exts));
+    assert_int_equal(LY_STMT_REQUIRE_INSTANCE, type->exts[0].parent_stmt);
+    assert_string_equal("RI", type->exts[0].argument);
+    assert_string_equal("T3", type->exts[1].argument);
+
+    leaf = (const struct lysp_node_leaf *)leaf->next;
+    type = &leaf->type;
+    assert_int_equal(2, LYA_COUNT(type->enums[0].exts));
+    assert_int_equal(LY_STMT_VALUE, type->enums[0].exts[0].parent_stmt);
+    assert_string_equal("V", type->enums[0].exts[0].argument);
+    assert_string_equal("E1", type->enums[0].exts[1].argument);
+
+    leaf = (const struct lysp_node_leaf *)leaf->next;
+    type = &leaf->type;
+    assert_int_equal(2, LYA_COUNT(type->bits[0].exts));
+    assert_int_equal(LY_STMT_POSITION, type->bits[0].exts[0].parent_stmt);
+    assert_string_equal("P", type->bits[0].exts[0].argument);
+    assert_string_equal("B1", type->bits[0].exts[1].argument);
+}
+
+static void
 test_yin_parse_submodule(void **state)
 {
     struct lys_module *mod;
@@ -3875,6 +3959,7 @@ main(void)
         UTEST(test_module_elem),
         UTEST(test_submodule_elem),
         UTEST(test_yin_parse_module),
+        UTEST(test_yin_parse_type_substmt_exts),
         UTEST(test_yin_parse_submodule),
     };
 

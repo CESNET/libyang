@@ -80,7 +80,8 @@ static void
 test_input_mem(void **UNUSED(state))
 {
     struct ly_in *in = NULL;
-    char *str1 = "a", *str2 = "b";
+    char *str1 = "a", *str2 = "b", *str3 = "abc";
+    char buf[2];
 
     assert_int_equal(LY_EINVAL, ly_in_new_memory(NULL, NULL));
     CHECK_LOG_LASTMSG("Invalid argument str (ly_in_new_memory()).");
@@ -94,6 +95,45 @@ test_input_mem(void **UNUSED(state))
     assert_ptr_equal(str1, ly_in_memory(in, str2));
     assert_ptr_equal(str2, ly_in_memory(in, NULL));
     assert_ptr_equal(str2, ly_in_memory(in, NULL));
+    ly_in_free(in, 0);
+
+    /* the previous start address is returned also after some data were read */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str3, &in));
+    assert_int_equal(LY_SUCCESS, ly_in_read(in, buf, 2));
+    assert_ptr_equal(str3, ly_in_memory(in, str1));
+    ly_in_free(in, 0);
+
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(str3, 3, &in));
+    assert_int_equal(LY_SUCCESS, ly_in_read(in, buf, 2));
+    assert_ptr_equal(str3, ly_in_memory_chunk(in, str1, 1));
+    ly_in_free(in, 0);
+}
+
+static void
+test_input_peek_reset(void **UNUSED(state))
+{
+    struct ly_in *in = NULL;
+    uint8_t peek;
+    char buf[3];
+
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("abc", &in));
+
+    /* a byte peeked before ly_in_reset() is not read again */
+    assert_int_equal(LY_SUCCESS, ly_in_peek(in, &peek));
+    assert_int_equal('a', peek);
+    assert_int_equal(LY_SUCCESS, ly_in_reset(in));
+    assert_int_equal(LY_SUCCESS, ly_in_read(in, buf, 3));
+    assert_memory_equal("abc", buf, 3);
+
+    /* a byte peeked before the source is changed is not read from the new source */
+    assert_int_equal(LY_SUCCESS, ly_in_reset(in));
+    assert_int_equal(LY_SUCCESS, ly_in_peek(in, &peek));
+    assert_non_null(ly_in_memory(in, "xyz"));
+    assert_int_equal(LY_SUCCESS, ly_in_peek(in, &peek));
+    assert_int_equal('x', peek);
+    assert_int_equal(LY_SUCCESS, ly_in_read(in, buf, 3));
+    assert_memory_equal("xyz", buf, 3);
+
     ly_in_free(in, 0);
 }
 
@@ -136,7 +176,8 @@ static void
 test_input_file(void **UNUSED(state))
 {
     struct ly_in *in = NULL;
-    FILE *f1 = NULL, *f2 = NULL;
+    FILE *f1 = NULL, *f2 = NULL, *f3 = NULL;
+    char buf[] = "{}";
 
     assert_int_equal(LY_EINVAL, ly_in_new_file(NULL, NULL));
     assert_null(ly_in_file(NULL, NULL));
@@ -151,6 +192,14 @@ test_input_file(void **UNUSED(state))
     assert_ptr_equal(f1, ly_in_file(in, f2));
     assert_ptr_equal(f2, ly_in_file(in, NULL));
     assert_ptr_equal(f2, ly_in_file(in, NULL));
+#ifndef _WIN32
+    /* a stream without a file descriptor cannot be used and the handler keeps its stream */
+    assert_non_null(f3 = fmemopen(buf, sizeof buf, "r"));
+    assert_null(ly_in_file(in, f3));
+    CHECK_LOG_LASTMSG("Input stream has no file descriptor.");
+    assert_ptr_equal(f2, ly_in_file(in, NULL));
+    fclose(f3);
+#endif
     ly_in_free(in, 1);
     /* f1 is still open */
     assert_int_not_equal(-1, fileno(f1));
@@ -167,11 +216,27 @@ test_input_filepath(void **UNUSED(state))
     assert_int_equal(LY_EINVAL, ly_in_new_filepath(NULL, 0, NULL));
     assert_int_equal(LY_EINVAL, ly_in_new_filepath(path1, 0, NULL));
     assert_ptr_equal(((void *)-1), ly_in_filepath(NULL, NULL, 0));
+    assert_ptr_equal(((void *)-1), ly_in_filepath(NULL, path1, 0));
+
+    /* changing the file path of a handler of another type is an error */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("data", &in));
+    assert_ptr_equal(((void *)-1), ly_in_filepath(in, path1, 0));
+    assert_int_equal(LY_IN_MEMORY, ly_in_type(in));
+    ly_in_free(in, 0);
 
     assert_int_equal(LY_SUCCESS, ly_in_new_filepath(path1, 0, &in));
     assert_int_equal(LY_IN_FILEPATH, ly_in_type(in));
     assert_ptr_equal(NULL, ly_in_filepath(in, path2, 0));
     assert_string_equal(path2, ly_in_filepath(in, NULL, 0));
+
+    /* a file that cannot be opened or mapped is an error and the handler keeps its file */
+    assert_ptr_equal(((void *)-1), ly_in_filepath(in, TESTS_BIN "/no_such_dir/libyang_test_input", 0));
+    CHECK_LOG_LASTMSG("Failed to open file \"" TESTS_BIN "/no_such_dir/libyang_test_input\" (No such file or directory).");
+    assert_string_equal(path2, ly_in_filepath(in, NULL, 0));
+    assert_ptr_equal(((void *)-1), ly_in_filepath(in, TEST_OUTPUT_FILE, 0));
+    CHECK_LOG_LASTMSG("Empty input file.");
+    assert_string_equal(path2, ly_in_filepath(in, NULL, 0));
+
     ly_in_free(in, 0);
 }
 
@@ -240,6 +305,8 @@ test_output_fd(void **UNUSED(state))
     assert_int_equal(10, read(fd2, buf, 30));
     assert_string_equal("test print", buf);
     assert_int_equal(0, lseek(fd2, 0, SEEK_SET));
+    /* a value of errno left from before must not prevent truncating */
+    errno = ESPIPE;
     assert_int_equal(LY_SUCCESS, ly_out_reset(out));
 
     assert_int_equal(LY_SUCCESS, ly_write(out, "rewrite", 8));
@@ -284,6 +351,8 @@ test_output_file(void **UNUSED(state))
     assert_non_null(fgets(buf, 31, f2));
     assert_string_equal("test print", buf);
     assert_int_equal(0, fseek(f2, 0, SEEK_SET));
+    /* a value of errno left from before must not prevent truncating */
+    errno = ESPIPE;
     assert_int_equal(LY_SUCCESS, ly_out_reset(out));
 
     assert_int_equal(LY_SUCCESS, ly_write(out, "rewrite", 8));
@@ -291,6 +360,8 @@ test_output_file(void **UNUSED(state))
     ly_print_flush(out);
     assert_non_null(fgets(buf, 31, f2));
     assert_string_equal("rewrite", buf);
+    assert_int_equal(0, fseek(f2, 0, SEEK_END));
+    assert_int_equal(8, ftell(f2));
 
     fclose(f2);
     ly_out_free(out, NULL, 1);
@@ -304,6 +375,14 @@ test_output_filepath(void **UNUSED(state))
     char buf[31] = {0};
     const char *fp1 = TEST_OUTPUT_FILE;
     const char *fp2 = TEST_OUTPUT_FILE2;
+    char *mem = NULL;
+
+    /* changing the file path of a NULL handler or a handler of another type is an error */
+    assert_ptr_equal(((void *)-1), ly_out_filepath(NULL, fp1));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&mem, 0, &out));
+    assert_ptr_equal(((void *)-1), ly_out_filepath(out, fp1));
+    assert_int_equal(LY_OUT_MEMORY, ly_out_type(out));
+    ly_out_free(out, NULL, 1);
 
     /* manipulate with the handler */
     assert_int_equal(LY_SUCCESS, ly_out_new_filepath(fp1, &out));
@@ -333,6 +412,19 @@ test_output_filepath(void **UNUSED(state))
     assert_non_null(fgets(buf, 31, f1));
     assert_string_equal("rewrite", buf);
 
+    fclose(f1);
+    ly_out_free(out, NULL, 1);
+
+    /* data written before changing to the same file are not left in the file after the new data */
+    assert_int_equal(LY_SUCCESS, ly_out_new_filepath(fp1, &out));
+    assert_int_equal(LY_SUCCESS, ly_write(out, "previous data", 13));
+    assert_ptr_equal(NULL, ly_out_filepath(out, fp1));
+    assert_int_equal(LY_SUCCESS, ly_write(out, "new", 3));
+    ly_print_flush(out);
+    assert_non_null(f1 = fopen(fp1, "rb"));
+    memset(buf, 0, sizeof buf);
+    assert_int_equal(3, fread(buf, 1, 30, f1));
+    assert_string_equal("new", buf);
     fclose(f1);
     ly_out_free(out, NULL, 1);
 }
@@ -392,6 +484,7 @@ main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_input_mem),
+        UTEST(test_input_peek_reset),
         UTEST(test_input_fd, setup_files, teardown_files),
         UTEST(test_input_file, setup_files, teardown_files),
         UTEST(test_input_filepath, setup_files, teardown_files),

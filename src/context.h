@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief internal context structures and functions
  *
- * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -580,7 +580,7 @@ LIBYANG_API_DECL struct lys_module *ly_ctx_get_module_latest_ns(const struct ly_
 /**
  * @brief Get the (only) implemented YANG module specified by its namespace.
  *
- * @param[in] ctx Context where to search.
+ * @param[in] ctx Context to search.
  * @param[in] ns Namespace of the YANG module to get.
  * @return The only implemented YANG module revision of the given namespace in the given context. NULL if there is no
  * implemented module of the given namespace.
@@ -588,9 +588,9 @@ LIBYANG_API_DECL struct lys_module *ly_ctx_get_module_latest_ns(const struct ly_
 LIBYANG_API_DECL struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns);
 
 /**
- * @brief Get a specific submodule from context. If its belongs-to module is known, use ::ly_ctx_get_submodule2().
+ * @brief Get a specific submodule from a context. If its belongs-to module is known, use ::ly_ctx_get_submodule2().
  *
- * @param[in] ctx libyang context to search in.
+ * @param[in] ctx Context to search.
  * @param[in] submodule Submodule name to find.
  * @param[in] revision Revision of the submodule to find, NULL for a submodule without a revision.
  * @return Found submodule, NULL if there is none.
@@ -599,10 +599,10 @@ LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule(const struct 
         const char *revision);
 
 /**
- * @brief Get the latests revision of a submodule from context. If its belongs-to module is known,
+ * @brief Get the latest revision of a submodule from a context. If its belongs-to module is known,
  * use ::ly_ctx_get_submodule2_latest().
  *
- * @param[in] ctx libyang context to search in.
+ * @param[in] ctx Context to search.
  * @param[in] submodule Submodule name to find.
  * @return Found submodule, NULL if there is none.
  */
@@ -631,10 +631,31 @@ LIBYANG_API_DECL const struct lysp_submodule *ly_ctx_get_submodule2_latest(const
         const char *submodule);
 
 /**
+ * @brief Get a specific submodule from a context.
+ *
+ * @param[in] ctx Context to search.
+ * @param[in] submodule Submodule name to find.
+ * @param[in] revision Revision of the submodule to find, NULL for a submodule without a revision.
+ * @return Found submodule, NULL if there is none.
+ */
+LIBYANG_API_DECL const struct lysc_submodule *ly_ctx_get_submodule3(const struct ly_ctx *ctx, const char *submodule,
+        const char *revision);
+
+/**
+ * @brief Get the latest revision of a submodule from a context.
+ *
+ * @param[in] ctx Context to search.
+ * @param[in] submodule Submodule name to find.
+ * @return Found submodule, NULL if there is none.
+ */
+LIBYANG_API_DECL const struct lysc_submodule *ly_ctx_get_submodule3_latest(const struct ly_ctx *ctx,
+        const char *submodule);
+
+/**
  * @brief Learn the number of internal modules of a context. Internal modules
  * is considered one that was loaded during the context creation.
  *
- * @param[in] ctx libyang context to examine.
+ * @param[in] ctx Context to use.
  * @return Number of internal modules.
  */
 LIBYANG_API_DECL uint32_t ly_ctx_internal_modules_count(const struct ly_ctx *ctx);

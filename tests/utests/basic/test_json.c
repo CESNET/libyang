@@ -271,6 +271,27 @@ test_number(void **state)
     lyd_free_all(tree);
     tree = NULL;
 
+    str = "0.25E2";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_SUCCESS, lyd_parse_value_fragment(ctx, "/test:num", in, LYD_JSON, 0, 0, 0, &tree));
+    assert_string_equal("25", lyd_get_value(tree));
+    lyd_free_all(tree);
+    tree = NULL;
+
+    str = "-0.62098E5";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_SUCCESS, lyd_parse_value_fragment(ctx, "/test:num", in, LYD_JSON, 0, 0, 0, &tree));
+    assert_string_equal("-62098", lyd_get_value(tree));
+    lyd_free_all(tree);
+    tree = NULL;
+
+    str = "0.0034E3";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_EVALID, lyd_parse_value_fragment(ctx, "/test:num", in, LYD_JSON, 0, 0, 0, &tree));
+    CHECK_LOG_CTX("Invalid union value \"3.4\" - no matching subtype found:\n"
+            "    ly2 integers: Invalid type int32 value \"3.4\".\n"
+            "    ly2 decimal64: Invalid non-string-encoded decimal64 value \"3.4\".\n", "/test:num", 1);
+
     /* decimal number, negative exponent */
     str = "\"35.94e-1\"";
     assert_non_null(ly_in_memory(in, str));
@@ -483,6 +504,25 @@ test_string(void **state)
     assert_int_equal(LY_EVALID, lyd_parse_value_fragment(ctx, "/test:l", in, LYD_JSON, 0, 0, 0, &tree));
     CHECK_LOG_CTX("Missing quotation-mark at the end of a JSON string.", NULL, 1);
     CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    /* escaped character */
+    str = "\"\\u003c\\u003C\"";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_SUCCESS, lyd_parse_value_fragment(ctx, "/test:l", in, LYD_JSON, 0, 0, 0, &tree));
+    assert_string_equal("<<", lyd_get_value(tree));
+    lyd_free_all(tree);
+    tree = NULL;
+
+    /* non-hexadecimal digits in an escaped character */
+    str = "\"\\u002s\"";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_EVALID, lyd_parse_value_fragment(ctx, "/test:l", in, LYD_JSON, 0, 0, 0, &tree));
+    CHECK_LOG_CTX("Invalid basic multilingual plane character \"\\u002s\".", NULL, 1);
+
+    str = "\"\\u004\"\"";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_EVALID, lyd_parse_value_fragment(ctx, "/test:l", in, LYD_JSON, 0, 0, 0, &tree));
+    CHECK_LOG_CTX("Invalid basic multilingual plane character \"\\u004\"\".", NULL, 1);
 
     ly_in_free(in, 0);
 }

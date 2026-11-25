@@ -2179,7 +2179,7 @@ lys_compile_node_augments(struct lysc_ctx *ctx, struct lysc_node *node)
         LY_CHECK_GOTO(ret, cleanup);
 
         /* augment was applied, remove it (index and the whole set may have changed because other augments could have
-         * been applied, keep the order so that augments from the same module have a deterministic order) */
+         * been applied, keep the order so that augments have a deterministic order) */
         ly_set_contains(&ctx->uses_augs, aug, &i);
         ly_set_rm_index_ordered(&ctx->uses_augs, i, NULL);
         lysc_augment_free(ctx->ctx, aug);
@@ -2246,6 +2246,7 @@ lys_precompile_own_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p
     struct lysc_nodeid *nodeid = NULL;
     struct lysc_augment *aug;
     const struct lys_module *mod;
+    uint32_t i;
 
     /* compile its target, it was already parsed and fully checked (except for the existence of the nodes) */
     ret = lys_precompile_nodeid(ctx->ctx, aug_p->nodeid, &nodeid);
@@ -2268,6 +2269,20 @@ lys_precompile_own_augment(struct lysc_ctx *ctx, struct lysp_node_augment *aug_p
     aug->aug_pmod = pmod;
     aug->ext = ext;
     aug->aug_p = aug_p;
+
+    /* order the augments alphabetically based on their module name */
+    for (i = 0; i < ctx->augs.count; ++i) {
+        aug = ctx->augs.objs[i];
+        if (strcmp(aug->aug_pmod->mod->name, pmod->mod->name) > 0) {
+            break;
+        }
+    }
+    if (i < ctx->augs.count - 1) {
+        /* move the last added aug */
+        aug = ctx->augs.objs[ctx->augs.count - 1];
+        memmove(ctx->augs.objs + i + 1, ctx->augs.objs + i, (ctx->augs.count - i - 1) * sizeof *ctx->augs.objs);
+        ctx->augs.objs[i] = aug;
+    }
 
 cleanup:
     lysc_nodeid_free(ctx->ctx, nodeid);

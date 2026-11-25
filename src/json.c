@@ -222,8 +222,8 @@ lyjson_string(struct lyjson_ctx *jsonctx)
                 /* Basic Multilingual Plane character \uXXXX */
                 ADD_CHECK_OVERFLOW_GOTO(offset, 1, error);
                 for (value = i = 0; i < 4; i++) {
-                    if (!in[offset + i]) {
-                        LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Invalid basic multilingual plane character \"%s\".", c);
+                    if (!isxdigit(in[offset + i])) {
+                        LOGVAL(jsonctx->ctx, NULL, LYVE_SYNTAX, "Invalid basic multilingual plane character \"%.6s\".", c);
                         goto error;
                     } else if (isdigit(in[offset + i])) {
                         u = (in[offset + i] - '0');
@@ -564,21 +564,22 @@ lyjson_exp_number(const struct ly_ctx *ctx, const char *in, const char *exponent
         /* Set a new range of 'numeric part'. Old decimal point is skipped. */
         num++;
         num_len--;
-        dp_position--;
         /* Get the number of useless zeros between the old
          * and new decimal point. For example, in the number 0.005E1,
          * there is one useless zero.
          */
-        zeros = lyjson_count_in_row(num, num + dp_position + 1, '0', FORWARD);
+        zeros = lyjson_count_in_row(num, num + dp_position, '0', FORWARD);
         /* If the new decimal point will be in the place of the first non-zero subnumber. */
-        if (zeros == (dp_position + 1)) {
+        if (zeros == dp_position) {
             /* keep one zero as leading zero */
             zeros--;
             /* new decimal point will be behind the leading zero */
             dp_position = 1;
             dot = 1;
         } else {
-            dot = 0;
+            /* the useless zeros are skipped, no decimal point if there are no digits behind it */
+            dp_position -= zeros;
+            dot = (dp_position < (int32_t)(num_len - zeros)) ? 1 : 0;
         }
         buf_len = minus + dot + (num_len - zeros);
         LY_CHECK_RET(lyjson_get_buffer_for_number(ctx, buf_len, &buf));
@@ -1067,6 +1068,7 @@ lyjson_ctx_backup(struct lyjson_ctx *jsonctx)
     jsonctx->backup.value = jsonctx->value;
     jsonctx->backup.value_len = jsonctx->value_len;
     jsonctx->backup.input = jsonctx->in->current;
+    jsonctx->backup.line = jsonctx->in->line;
     jsonctx->backup.dynamic = jsonctx->dynamic;
     jsonctx->dynamic = 0;
 }
@@ -1082,6 +1084,7 @@ lyjson_ctx_restore(struct lyjson_ctx *jsonctx)
     jsonctx->value = jsonctx->backup.value;
     jsonctx->value_len = jsonctx->backup.value_len;
     jsonctx->in->current = jsonctx->backup.input;
+    jsonctx->in->line = jsonctx->backup.line;
     jsonctx->dynamic = jsonctx->backup.dynamic;
     jsonctx->backup.dynamic = 0;
 }

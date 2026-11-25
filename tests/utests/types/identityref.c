@@ -76,7 +76,9 @@ test_data_xml(void **state)
             "  prefix d;"
             "  import ident-base {prefix ib;}"
             "  identity ident1 {base ib:ident-base;}"
+            "  identity ident2 {base ident1;}"
             "  leaf l1 {type identityref {base ib:ident-base;}}"
+            "  leaf l2 {type identityref {base ib:ident-base; base ident1;}}"
             "}";
     UTEST_ADD_MODULE(schema2, LYS_IN_YANG, NULL, NULL);
 
@@ -109,6 +111,16 @@ test_data_xml(void **state)
 
     TEST_ERROR_XML("defs", "xmlns:x=\"urn:tests:unknown\"", "l1", "x:ident-base");
     CHECK_LOG_CTX("Invalid identityref \"x:ident-base\" value - unable to map prefix to YANG schema.", "/defs:l1", 1);
+
+    /* multiple bases */
+    data = "<l2 xmlns=\"urn:tests:defs\">ident2</l2>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_LYD_STRING_PARAM(tree, "{\"defs:l2\":\"ident2\"}", LYD_JSON, LYD_PRINT_SHRINK);
+    lyd_free_all(tree);
+
+    TEST_ERROR_XML("defs", "xmlns:x=\"urn:tests:ident-base\"", "l2", "x:ident-base");
+    CHECK_LOG_CTX("Invalid identityref \"x:ident-base\" value - identity not derived from all the bases "
+            "\"ident-base:ident-base\", \"defs:ident1\".", "/defs:l2", 1);
 }
 
 static void

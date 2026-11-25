@@ -148,7 +148,7 @@ identityref_check_base(const struct lysc_ident *ident, struct lysc_type_identity
         uint32_t value_size, struct ly_err_item **err)
 {
     LY_ERR ret;
-    uint32_t str_len;
+    uint32_t str_size, str_len;
     char *str;
     LYA_COUNT_T u;
     struct lysc_ident *base;
@@ -164,12 +164,15 @@ identityref_check_base(const struct lysc_ident *ident, struct lysc_type_identity
     /* it does not, generate a nice error */
     if (u == LYA_COUNT(type->bases)) {
         str = NULL;
-        str_len = 1;
+        str_size = 0;
+        str_len = 0;
         LYA_FOR(type->bases, u) {
             base = type->bases[u];
-            str_len += (u ? 2 : 0) + 1 + strlen(base->module->name) + 1 + strlen(base->name) + 1;
-            str = ly_realloc(str, str_len);
-            sprintf(str + (u ? strlen(str) : 0), "%s\"%s:%s\"", u ? ", " : "", base->module->name, base->name);
+            if (ly_append_str(&str, &str_size, &str_len, "%s\"%s:%s\"", u ? ", " : "", base->module->name,
+                    base->name)) {
+                free(str);
+                return ly_err_new_no_mem(err);
+            }
         }
 
         /* no match */

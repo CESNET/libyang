@@ -62,9 +62,9 @@
 void
 lyd_ctx_free(struct lyd_ctx *lydctx)
 {
-    ly_set_erase(&lydctx->node_types, NULL);
+    lyht_free(lydctx->node_when, NULL);
+    lyht_free(lydctx->node_types, NULL);
     ly_set_erase(&lydctx->meta_types, NULL);
-    ly_set_erase(&lydctx->node_when, NULL);
     ly_set_erase(&lydctx->ext_val, free);
     lyd_val_getnext_ht_free(lydctx->val_getnext_ht);
 }
@@ -82,6 +82,17 @@ lyd_parser_notif_eventtime_validate(const struct lyd_node *node)
     /* validate the value, in JSON format */
     value = lyd_get_value(node);
     LY_CHECK_RET(lyd_value_validate(schema, value, strlen(value), NULL, NULL, NULL));
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lyd_parser_yp_envelope_check(const struct ly_ctx *ctx)
+{
+    if (!ly_ctx_get_module_implemented(ctx, "ietf-yp-notification")) {
+        LOGERR(ctx, LY_EINVAL, "Module \"ietf-yp-notification\" is not implemented.");
+        return LY_EINVAL;
+    }
 
     return LY_SUCCESS;
 }
@@ -140,8 +151,24 @@ lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
     LY_ERR rc = LY_SUCCESS;
 
     if (lydctx->int_opts & LYD_INTOPT_ANY) {
-        /* nothing to check, everything is allowed */
+        if ((lydctx->int_opts & LYD_INTOPT_YP_ENVELOPE) && (snode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
+            /* only one notification and no RPC/action in the envelope */
+            if (snode->nodetype != LYS_NOTIF) {
+                goto error_node_inval;
+            }
+            if (lydctx->op_node) {
+                goto error_node_dup;
+            }
+        }
+
+        /* nothing else to check, everything is allowed */
         goto cleanup;
+    }
+
+    if ((lydctx->int_opts & LYD_INTOPT_YP_ENVELOPE) && !snode->parent && (strcmp(snode->name, "envelope") ||
+            strcmp(snode->module->name, "ietf-yp-notification"))) {
+        /* the root must be the envelope */
+        goto error_node_inval;
     }
 
     if ((lydctx->parse_opts & LYD_PARSE_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
@@ -206,14 +233,14 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
         const void *value, uint64_t value_size_bits, ly_bool *dynamic, LY_VALUE_FORMAT format, void *prefix_data,
         uint32_t hints, struct lyd_node **node)
 {
-    ly_bool incomplete;
+    ly_bool incomplete = 0;
     ly_bool store_only = (lydctx->parse_opts & LYD_PARSE_STORE_ONLY) == LYD_PARSE_STORE_ONLY ? 1 : 0;
 
     LY_CHECK_RET(lyd_create_term(schema, lnode, value, value_size_bits, 1, store_only, dynamic, format, prefix_data,
             hints, &incomplete, node));
 
     if (incomplete && !(lydctx->parse_opts & LYD_PARSE_ONLY)) {
-        LY_CHECK_RET(ly_set_add(&lydctx->node_types, *node, 1, NULL));
+        LY_CHECK_RET(lyd_val_unres_ht_add(*node, lydctx->node_types));
     }
     return LY_SUCCESS;
 }
@@ -299,7 +326,7 @@ lyd_parser_set_data_flags(struct lyd_node *node, struct lyd_meta **meta, struct 
         }
         if (!(lydctx->parse_opts & LYD_PARSE_ONLY)) {
             /* remember we need to evaluate this node's when */
-            LY_CHECK_RET(ly_set_add(&lydctx->node_when, node, 1, NULL));
+            LY_CHECK_RET(lyd_val_unres_ht_add(node, lydctx->node_when));
         }
     }
 
@@ -364,8 +391,9 @@ lyd_parser_validate_new_implicit(struct lyd_ctx *lydctx, struct lyd_node *node)
     LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
 
     /* add any missing default children */
-    r = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, &lydctx->node_when, &lydctx->node_types,
-            &lydctx->ext_val, (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, lydctx->val_getnext_ht, NULL);
+    r = lyd_new_implicit_r(node, lyd_node_child_p(node), NULL, NULL, lydctx->node_when, lydctx->node_types,
+            &lydctx->ext_val, (lydctx->val_opts & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0,
+            lydctx->val_getnext_ht, NULL);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
 cleanup:
@@ -463,7 +491,7 @@ lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **file
         }
 #else
         /* get URI if there is /proc */
-        sprintf(proc_path, "/proc/self/fd/%d", in->method.fd);
+        snprintf(proc_path, sizeof proc_path, "/proc/self/fd/%d", in->method.fd);
         if ((len = readlink(proc_path, path, PATH_MAX - 1)) > 0) {
             LY_CHECK_RET(lysdict_insert(ctx, path, len, filepath));
         }
@@ -1339,9 +1367,8 @@ lysp_stmt_type_pattern_modifier(struct lysp_ctx *ctx, const struct lysp_stmt *st
     }
 
     /* replace the value in the dictionary */
-    buf = malloc(strlen(*pat) + 1);
+    buf = strdup(*pat);
     LY_CHECK_ERR_RET(!buf, LOGMEM(PARSER_CTX(ctx)), LY_EMEM);
-    strcpy(buf, *pat);
     lysdict_remove(PARSER_CTX(ctx), *pat);
 
     assert(buf[0] == LYSP_RESTR_PATTERN_ACK);
@@ -1785,6 +1812,39 @@ lysp_stmt_identity(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct ly
 }
 
 /**
+ * @brief Parse the revision-date statement of an import or include.
+ *
+ * The value is validated before it is stored, @p rev has room only for a valid date.
+ *
+ * @param[in] ctx Parser context.
+ * @param[in] stmt Source statement data from the parsed extension instance.
+ * @param[in,out] rev Array to store the revision date in.
+ * @param[in,out] exts Extension instances to add to.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lysp_stmt_revision_date(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, char *rev, struct lysp_ext_instance **exts)
+{
+    const char *str = NULL;
+    LY_ERR rc;
+
+    if (rev[0]) {
+        LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "revision-date");
+        return LY_EVALID;
+    }
+
+    LY_CHECK_RET(lysp_stmt_text_field(ctx, stmt, 0, &str, Y_STR_ARG, exts));
+
+    rc = lys_check_date(PARSER_CTX(ctx), str, strlen(str), "revision-date");
+    if (!rc) {
+        memcpy(rev, str, LY_REV_SIZE);
+    }
+    lysdict_remove(PARSER_CTX(ctx), str);
+
+    return rc ? LY_EVALID : LY_SUCCESS;
+}
+
+/**
  * @brief Parse the import statement.
  *
  * @param[in] ctx parser context.
@@ -1796,7 +1856,6 @@ static LY_ERR
 lysp_stmt_import(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_import **imports)
 {
     struct lysp_import *imp;
-    const char *str = NULL;
 
     LYA_ADD_ITEM(*imports, imp, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
@@ -1818,10 +1877,7 @@ lysp_stmt_import(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &imp->ref, Y_STR_ARG, &imp->exts));
             break;
         case LY_STMT_REVISION_DATE:
-            LY_CHECK_RET(lysp_stmt_text_field(ctx, stmt, 0, &str, Y_STR_ARG, &imp->exts));
-            strcpy(imp->rev, str);
-            lysdict_remove(PARSER_CTX(ctx), str);
-            LY_CHECK_RET(lys_check_date(PARSER_CTX(ctx), imp->rev, LY_REV_SIZE - 1, "revision-date"));
+            LY_CHECK_RET(lysp_stmt_revision_date(ctx, child, imp->rev, &imp->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(lysp_stmt_ext(ctx, child, stmt->kw, 0, &imp->exts));
@@ -1847,7 +1903,6 @@ static LY_ERR
 lysp_stmt_include(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lysp_include **includes)
 {
     struct lysp_include *inc;
-    const char *str = NULL;
 
     LYA_ADD_ITEM(*includes, inc, LOGMEM(PARSER_CTX(ctx)); return LY_EMEM);
 
@@ -1865,10 +1920,7 @@ lysp_stmt_include(struct lysp_ctx *ctx, const struct lysp_stmt *stmt, struct lys
             LY_CHECK_RET(lysp_stmt_text_field(ctx, child, 0, &inc->ref, Y_STR_ARG, &inc->exts));
             break;
         case LY_STMT_REVISION_DATE:
-            LY_CHECK_RET(lysp_stmt_text_field(ctx, stmt, 0, &str, Y_STR_ARG, &inc->exts));
-            strcpy(inc->rev, str);
-            lysdict_remove(PARSER_CTX(ctx), str);
-            LY_CHECK_RET(lys_check_date(PARSER_CTX(ctx), inc->rev, LY_REV_SIZE - 1, "revision-date"));
+            LY_CHECK_RET(lysp_stmt_revision_date(ctx, child, inc->rev, &inc->exts));
             break;
         case LY_STMT_EXTENSION_INSTANCE:
             LY_CHECK_RET(lysp_stmt_ext(ctx, child, stmt->kw, 0, &inc->exts));

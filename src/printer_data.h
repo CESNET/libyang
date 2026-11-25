@@ -135,7 +135,7 @@ struct ly_out;
  * @param[in] out Printer handler for a specific output. Use ly_out_*() functions to create and free the handler.
  * @param[in] root The root element of the tree to print, can be any sibling.
  * @param[in] format Output format.
- * @param[in] options [Data printer flags](@ref dataprinterflags) except ::LYD_PRINT_WITHSIBLINGS.
+ * @param[in] options [Data printer flags](@ref dataprinterflags), ::LYD_PRINT_SIBLINGS is implied.
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_print_all(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, uint32_t options);
@@ -146,7 +146,7 @@ LIBYANG_API_DECL LY_ERR lyd_print_all(struct ly_out *out, const struct lyd_node 
  * @param[in] out Printer handler for a specific output. Use ly_out_*() functions to create and free the handler.
  * @param[in] root The root element of the subtree to print.
  * @param[in] format Output format.
- * @param[in] options [Data printer flags](@ref dataprinterflags) except ::LYD_PRINT_WITHSIBLINGS.
+ * @param[in] options [Data printer flags](@ref dataprinterflags).
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyd_print_tree(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, uint32_t options);

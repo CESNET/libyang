@@ -367,11 +367,18 @@ enum lyd_type {
 
     LYD_TYPE_RPC_RESTCONF,      /**< message-body of a RESTCONF operation input parameters
                                      ([ref](https://www.rfc-editor.org/rfc/rfc8040.html#section-3.6.1)) */
-    LYD_TYPE_NOTIF_RESTCONF,    /**< RESTCONF JSON notification data
+    LYD_TYPE_NOTIF_RESTCONF,    /**< RESTCONF JSON or CBOR notification data
                                      ([ref](https://www.rfc-editor.org/rfc/rfc8040.html#section-6.4)), to parse
                                      a notification in XML, use ::LYD_TYPE_NOTIF_NETCONF */
-    LYD_TYPE_REPLY_RESTCONF     /**< message-body of a RESTCONF operation output parameters
+    LYD_TYPE_REPLY_RESTCONF,    /**< message-body of a RESTCONF operation output parameters
                                      ([ref](https://www.rfc-editor.org/rfc/rfc8040.html#section-3.6.2)) */
+
+    LYD_TYPE_NOTIF_ENVELOPE,    /**< YANG-Push notification envelope, the 'envelope' structure of the
+                                     'ietf-yp-notification' module
+                                     ([ref](https://datatracker.ietf.org/doc/draft-ietf-netconf-notif-envelope/)) */
+    LYD_TYPE_NOTIF_AUTO         /**< notification in the YANG-Push envelope (::LYD_TYPE_NOTIF_ENVELOPE) or in the
+                                     NETCONF/RESTCONF one (::LYD_TYPE_NOTIF_NETCONF, ::LYD_TYPE_NOTIF_RESTCONF),
+                                     detected from the input */
 };
 /** @} datatype */
 
@@ -413,8 +420,9 @@ enum lyd_type {
  *
  * - ::LYD_TYPE_NOTIF_RESTCONF:
  *   - @p parent - must be NULL, the whole notification is expected;
- *   - @p format - must be ::LYD_JSON, XML-formatted notifications are parsed using ::LYD_TYPE_NOTIF_NETCONF;
- *   - @p tree - must be provided, all the RESTCONF-specific JSON objects will be returned here as
+ *   - @p format - can be both ::LYD_JSON and ::LYD_CBOR, XML-formatted notifications are parsed using
+ *                 ::LYD_TYPE_NOTIF_NETCONF;
+ *   - @p tree - must be provided, all the RESTCONF-specific JSON/CBOR objects will be returned here as
  *               a separate opaque data tree, even if the function fails, this may be returned;
  *   - @p op - must be provided, the notification data tree itself will be returned here, pointing to the operation;
  *
@@ -425,6 +433,23 @@ enum lyd_type {
  *               a separate opaque data tree, even if the function fails, this may be returned;
  *   - @p op - must be NULL, @p parent points to the operation;
  *   Note that error reply should be parsed as 'yang-data' extension data.
+ *
+ * - ::LYD_TYPE_NOTIF_ENVELOPE:
+ *   - @p ctx - must have the 'ietf-yp-notification' module implemented;
+ *   - @p parent - must be NULL, the whole envelope is expected;
+ *   - @p format - can be ::LYD_XML, ::LYD_JSON, or ::LYD_CBOR;
+ *   - @p tree - must be provided, the envelope structure data tree with an empty 'contents' will be returned here,
+ *               validate it using ::lyd_validate_all() with ::LYD_VALIDATE_PRESENT;
+ *   - @p op - must be provided, the notification data tree separated from the envelope 'contents' will be returned
+ *             here, pointing to the operation;
+ *
+ * - ::LYD_TYPE_NOTIF_AUTO:
+ *   - @p ctx - must have the 'ietf-yp-notification' module implemented to parse the YANG-Push envelope;
+ *   - @p parent - must be NULL, the whole notification is expected;
+ *   - @p format - can be ::LYD_XML, ::LYD_JSON, or ::LYD_CBOR;
+ *   - @p tree - must be provided, see ::LYD_TYPE_NOTIF_ENVELOPE, ::LYD_TYPE_NOTIF_NETCONF, and
+ *               ::LYD_TYPE_NOTIF_RESTCONF, only the YANG-Push envelope has a schema;
+ *   - @p op - must be provided, the notification data tree itself will be returned here, pointing to the operation;
  *
  * - ::LYD_TYPE_RPC_YANG:
  * - ::LYD_TYPE_NOTIF_YANG:
@@ -444,7 +469,8 @@ enum lyd_type {
  * @param[out] tree Optional full parsed data tree. If @p parent is set, set to NULL.
  * @param[out] op Optional pointer to the operation (action/RPC/notification) node.
  * @return LY_ERR value.
- * @return LY_ENOT if @p data_type is a NETCONF message and the root XML element is not the expected one.
+ * @return LY_ENOT if @p data_type is a NETCONF message or ::LYD_TYPE_NOTIF_AUTO in XML and the root XML element is
+ * not the expected one.
  */
 LIBYANG_API_DECL LY_ERR lyd_parse_op(const struct ly_ctx *ctx, struct lyd_node *parent, struct ly_in *in, LYD_FORMAT format,
         enum lyd_type data_type, uint32_t parse_options, struct lyd_node **tree, struct lyd_node **op);

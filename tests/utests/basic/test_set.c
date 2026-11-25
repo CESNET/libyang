@@ -27,7 +27,7 @@ test_basics(void **UNUSED(state))
     char *str;
     unsigned int u;
     void *ptr;
-    uint32_t index;
+    uint32_t index = 0;
 
     /* creation - everything is empty */
     assert_int_equal(LY_SUCCESS, ly_set_new(&set));

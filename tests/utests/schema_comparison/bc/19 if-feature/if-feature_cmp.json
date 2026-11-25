@@ -82,6 +82,32 @@
             }
           },
           {
+            "parent-path": "/{grp=grp}",
+            "identifier": "l",
+            "stmt-type": "leaf",
+            "changed": [
+              {
+                "stmt": "if-feature",
+                "parent-stmt": "node",
+                "change": "removed",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "old": {
+              "if-feature": [
+                "not f"
+              ],
+              "type": {
+                "name": "string"
+              }
+            },
+            "new": {
+              "type": {
+                "name": "string"
+              }
+            }
+          },
+          {
             "parent-path": "/",
             "identifier": "t1",
             "stmt-type": "typedef",

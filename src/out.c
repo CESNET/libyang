@@ -270,7 +270,7 @@ ly_out_new_memory(char **strp, size_t size, struct ly_out **out)
     return LY_SUCCESS;
 }
 
-char *
+LIBYANG_API_DEF char *
 ly_out_memory(struct ly_out *out, char **strp, size_t size)
 {
     char *data;
@@ -305,11 +305,12 @@ ly_out_reset(struct ly_out *out)
         LOGINT(NULL);
         return LY_EINT;
     case LY_OUT_FD:
-        if ((lseek(out->method.fd, 0, SEEK_SET) == -1) && (errno != ESPIPE)) {
-            LOGERR(NULL, LY_ESYS, "Seeking output file descriptor failed (%s).", strerror(errno));
-            return LY_ESYS;
-        }
-        if ((errno != ESPIPE) && (ftruncate(out->method.fd, 0) == -1)) {
+        if (lseek(out->method.fd, 0, SEEK_SET) == -1) {
+            if (errno != ESPIPE) {
+                LOGERR(NULL, LY_ESYS, "Seeking output file descriptor failed (%s).", strerror(errno));
+                return LY_ESYS;
+            }
+        } else if (ftruncate(out->method.fd, 0) == -1) {
             LOGERR(NULL, LY_ESYS, "Truncating output file failed (%s).", strerror(errno));
             return LY_ESYS;
         }
@@ -317,11 +318,12 @@ ly_out_reset(struct ly_out *out)
     case LY_OUT_FDSTREAM:
     case LY_OUT_FILE:
     case LY_OUT_FILEPATH:
-        if ((fseek(out->method.f, 0, SEEK_SET) == -1) && (errno != ESPIPE)) {
-            LOGERR(NULL, LY_ESYS, "Seeking output file stream failed (%s).", strerror(errno));
-            return LY_ESYS;
-        }
-        if ((errno != ESPIPE) && (ftruncate(fileno(out->method.f), 0) == -1)) {
+        if (fseek(out->method.f, 0, SEEK_SET) == -1) {
+            if (errno != ESPIPE) {
+                LOGERR(NULL, LY_ESYS, "Seeking output file stream failed (%s).", strerror(errno));
+                return LY_ESYS;
+            }
+        } else if (ftruncate(fileno(out->method.f), 0) == -1) {
             LOGERR(NULL, LY_ESYS, "Truncating output file failed (%s).", strerror(errno));
             return LY_ESYS;
         }
@@ -366,14 +368,15 @@ ly_out_filepath(struct ly_out *out, const char *filepath)
 {
     FILE *f;
 
-    LY_CHECK_ARG_RET(NULL, out, out->type == LY_OUT_FILEPATH, filepath ? NULL : ((void *)-1));
+    LY_CHECK_ARG_RET(NULL, out, out->type == LY_OUT_FILEPATH, ((void *)-1));
 
     if (!filepath) {
         return out->method.fpath.filepath;
     }
 
-    /* replace filepath */
+    /* replace filepath, the data written into the current file go there before the new file is created/opened */
     f = out->method.fpath.f;
+    fflush(f);
     out->method.fpath.f = fopen(filepath, "wb");
     if (!out->method.fpath.f) {
         LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", filepath, strerror(errno));

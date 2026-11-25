@@ -253,7 +253,7 @@ lyplg_type_print_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *
         void *UNUSED(prefix_data), ly_bool *dynamic, uint64_t *value_size_bits)
 {
     struct lyd_value_ipv6_address *val;
-    uint32_t zone_len;
+    uint32_t zone_len, ret_size, ret_len;
     char *ret;
 
     LYD_VALUE_GET(value, val);
@@ -287,7 +287,8 @@ lyplg_type_print_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *
     if (!value->_canonical) {
         /* '%' + zone */
         zone_len = val->zone ? strlen(val->zone) + 1 : 0;
-        ret = malloc(INET6_ADDRSTRLEN + zone_len);
+        ret_size = INET6_ADDRSTRLEN + zone_len;
+        ret = malloc(ret_size);
         LY_CHECK_RET(!ret, NULL);
 
         /* get the address in string */
@@ -299,7 +300,8 @@ lyplg_type_print_ipv6_address(const struct ly_ctx *ctx, const struct lyd_value *
 
         /* add zone */
         if (zone_len) {
-            sprintf(ret + strlen(ret), "%%%s", val->zone);
+            ret_len = strlen(ret);
+            snprintf(ret + ret_len, ret_size - ret_len, "%%%s", val->zone);
         }
 
         /* store it */

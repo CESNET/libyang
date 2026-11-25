@@ -18,6 +18,7 @@
 
 #include "dict.h"
 #include "hash_table.h"
+#include "hash_table_internal.h"
 
 static void
 test_invalid_arguments(void **state)
@@ -92,7 +93,6 @@ test_ht_basic(void **UNUSED(state))
     assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, i));
     assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, i, NULL));
     assert_int_equal(LY_ENOTFOUND, lyht_remove(ht, &i, i));
-    CHECK_LOG_LASTMSG("Invalid argument hash (lyht_remove_with_resize_cb()).");
 
     lyht_free(ht, NULL);
 }
@@ -122,7 +122,6 @@ test_ht_resize(void **UNUSED(state))
     /* removing not present data should fail */
     for (i = 0; i < 2; ++i) {
         assert_int_equal(LY_ENOTFOUND, lyht_remove(ht, &i, i));
-        CHECK_LOG_LASTMSG("Invalid argument hash (lyht_remove_with_resize_cb()).");
     }
     /* removing present data, resize should happened
      * when we are below 25% of the table filled, so with 3 records left */
@@ -146,8 +145,9 @@ test_ht_resize(void **UNUSED(state))
 static void
 test_ht_collisions(void **UNUSED(state))
 {
-    uint32_t i;
+    uint32_t i, val;
     struct ly_ht *ht;
+    struct ly_ht_rec *rec, **hlist_recs = NULL;
 
     assert_non_null(ht = lyht_new(8, sizeof(int), ht_equal_clb, NULL, 1));
 
@@ -164,37 +164,88 @@ test_ht_collisions(void **UNUSED(state))
         }
     }
 
-    i = 4;
-    assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, 2));
-
-    i = 2;
-    assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, 2));
+    /* iterate over records while removing items */
+    i = 0;
+    LYHT_ITER_ALL_RECS_SAFE(ht, &hlist_recs, rec) {
+        switch (i) {
+        case 0:
+            assert_int_equal(2, *(int *)&rec->val);
+            val = 2;
+            assert_int_equal(LY_SUCCESS, lyht_remove(ht, &val, 2));
+            break;
+        case 1:
+            assert_int_equal(3, *(int *)&rec->val);
+            break;
+        case 2:
+            assert_int_equal(4, *(int *)&rec->val);
+            break;
+        case 3:
+            assert_int_equal(5, *(int *)&rec->val);
+            val = 5;
+            assert_int_equal(LY_SUCCESS, lyht_remove(ht, &val, 2));
+            break;
+        default:
+            fail();
+        }
+        ++i;
+    }
 
     /* check all records */
     for (i = 0; i < 8; ++i) {
-        if ((i == 3) || (i == 5)) {
+        if ((i == 3) || (i == 4)) {
             assert_int_equal(LY_SUCCESS, lyht_find(ht, &i, 2, NULL));
         } else {
             assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, 2, NULL));
         }
     }
 
-    for (i = 0; i < 8; ++i) {
-        if ((i == 3) || (i == 5)) {
-            assert_int_equal(LY_SUCCESS, lyht_find(ht, &i, 2, NULL));
-        } else {
-            assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, 2, NULL));
-        }
-    }
-
-    i = 3;
-    assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, 2));
-    i = 5;
-    assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, 2));
+    val = 3;
+    assert_int_equal(LY_SUCCESS, lyht_remove(ht, &val, 2));
+    val = 4;
+    assert_int_equal(LY_SUCCESS, lyht_remove(ht, &val, 2));
 
     /* check all records */
     for (i = 0; i < 8; ++i) {
         assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, 2, NULL));
+    }
+
+    /* add some more values */
+    for (i = 0; i < 8; ++i) {
+        assert_int_equal(LY_SUCCESS, lyht_insert(ht, &i, 2, NULL));
+    }
+
+    /* iterate over records while removing items */
+    LYHT_ITER_ALL_RECS_SAFE(ht, &hlist_recs, rec) {
+        switch (*(int *)&rec->val) {
+        case 0:
+            /* remove current value */
+            val = 0;
+            assert_int_equal(LY_SUCCESS, lyht_remove(ht, &val, 2));
+            break;
+        case 1:
+            /* remove last value */
+            val = 7;
+            assert_int_equal(LY_SUCCESS, lyht_remove(ht, &val, 2));
+            break;
+        case 2:
+            break;
+        case 3:
+            /* remove traversed value */
+            val = 1;
+            assert_int_equal(LY_SUCCESS, lyht_remove(ht, &val, 2));
+            break;
+        case 4:
+            break;
+        case 5:
+            break;
+        case 6:
+            /* remove current last value */
+            val = 6;
+            assert_int_equal(LY_SUCCESS, lyht_remove(ht, &val, 2));
+            break;
+        default:
+            fail();
+        }
     }
 
     lyht_free(ht, NULL);

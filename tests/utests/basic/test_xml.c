@@ -240,6 +240,25 @@ test_text(void **state)
     lyd_free_all(tree);
     tree = NULL;
 
+    str = "<e xmlns=\"urn:test\"><![CDATA[€𠜎Øn]]></e>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+    lyd_free_all(tree);
+    tree = NULL;
+
+    /* CDATA characters are checked the same as text */
+    str = "<e xmlns=\"urn:test\"><![CDATA[a\x01" "b]]></e>";
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Invalid character 0x1.", NULL, 1);
+
+    str = "<e xmlns=\"urn:test\"><![CDATA[a\xff\xfe" "b]]></e>";
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Invalid character 0xff.", NULL, 1);
+
+    str = "<e xmlns=\"urn:test\"><![CDATA[a\xf0]]></e>";
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Invalid character 0xf0.", NULL, 1);
+
     /* invalid characters in string */
     str = "<e xmlns=\"urn:test\" attr=\'&#x52\'";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
@@ -268,6 +287,22 @@ test_text(void **state)
     str = "<e xmlns=\"urn:test\" attr=\'&#xffff;\'";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     CHECK_LOG_CTX("Invalid character reference \"&#xffff;\'\" (0x0000ffff).", NULL, 1);
+
+    /* character references too large to fit, must not wrap around to "<" */
+    str = "<e xmlns=\"urn:test\" attr=\'&#4294967356;\'";
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Invalid character reference \"&#4294967356\".", NULL, 1);
+
+    str = "<e xmlns=\"urn:test\">&#x10000003C;</e>";
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Invalid character reference \"&#x10000003C\".", NULL, 1);
+
+    /* leading zeros are fine */
+    str = "<e xmlns=\"urn:test\">&#00000000000000000060;&#x0000000000003C;</e>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+    lyd_free_all(tree);
+    tree = NULL;
 }
 
 static void

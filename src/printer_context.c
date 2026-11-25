@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief Compiled context printer
  *
- * Copyright (c) 2024 - 2025 CESNET, z.s.p.o.
+ * Copyright (c) 2024 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -77,11 +77,10 @@
 static void
 ctxs_dict_strings(const struct ly_ht *ht, int *size)
 {
-    uint32_t i, j;
     struct ly_ht_rec *rec;
     struct ly_dict_rec *dict_rec;
 
-    LYHT_ITER_ALL_RECS(ht, i, j, rec) {
+    LYHT_ITER_ALL_RECS(ht, rec) {
         dict_rec = (struct ly_dict_rec *)&rec->val;
 
         /* strings */
@@ -715,14 +714,13 @@ ctxp_set(const struct ly_set *orig_set, struct ly_set *set, void **mem)
 static void
 ctxp_dict_strings(const struct ly_ht *orig_dict, struct ly_ht *addr_ht, void **mem)
 {
-    uint32_t i, j;
     struct ly_ht_rec *rec;
     struct ly_dict_rec *dict_rec;
     int len;
     void *orig_str;
     char *str;
 
-    LYHT_ITER_ALL_RECS(orig_dict, i, j, rec) {
+    LYHT_ITER_ALL_RECS(orig_dict, rec) {
         dict_rec = (struct ly_dict_rec *)&rec->val;
 
         /* strings */
@@ -1648,8 +1646,7 @@ ctxp_module(const struct lys_module *orig_mod, struct lys_module *mod, struct ly
 {
     LYA_COUNT_T u;
 
-    /* ctx */
-    mod->ctx = ly_ctx_compiled_addr_ht_get(addr_ht, orig_mod->ctx, 0);
+    /* ctx already set */
 
     /* strings */
     mod->name = ly_ctx_compiled_addr_ht_get(addr_ht, orig_mod->name, 0);
@@ -1730,8 +1727,10 @@ ly_ctx_compiled_print_context(const struct ly_ctx *orig_ctx, struct ly_ctx *ctx,
     /* modules, referenced, 2 loops because of augments (forward reference) */
     ctxp_set(&orig_ctx->modules, &ctx->modules, mem);
     for (i = 0; i < ctx->modules.count; ++i) {
-        /* allocate the shared module and store its new address in HT so it can be referenced */
+        /* allocate the shared module and store its new address in HT so it can be referenced;
+         * set only the context for extension callbacks (schema-mount) */
         ctx->modules.objs[i] = *mem;
+        ((struct lys_module *)*mem)->ctx = ctx;
         *mem = (char *)*mem + LY_CTXP_MEM_SIZE(sizeof(struct lys_module));
         ly_ctx_compiled_addr_ht_add(addr_ht, orig_ctx->modules.objs[i], ctx->modules.objs[i]);
     }
@@ -1831,7 +1830,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
         case LY_STMT_MANDATORY:
         case LY_STMT_ORDERED_BY:
         case LY_STMT_STATUS:
-            memcpy(orig_substmts[u].storage_p, substmts[u].storage_p, sizeof(uint16_t));
+            memcpy((uint16_t *)substmts[u].storage_p, (uint16_t *)orig_substmts[u].storage_p, sizeof(uint16_t));
             break;
         case LY_STMT_EXTENSION_INSTANCE: {
             const struct lysc_ext_instance *orig_exts = *orig_substmts[u].storage_p;
@@ -1845,7 +1844,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
         }
         case LY_STMT_FRACTION_DIGITS:
         case LY_STMT_REQUIRE_INSTANCE:
-            memcpy(orig_substmts[u].storage_p, substmts[u].storage_p, sizeof(uint8_t));
+            memcpy((uint8_t *)substmts[u].storage_p, (uint8_t *)orig_substmts[u].storage_p, sizeof(uint8_t));
             break;
         case LY_STMT_IDENTITY: {
             const struct lysc_ident *orig_identities = *orig_substmts[u].storage_p;
@@ -1865,7 +1864,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
             break;
         case LY_STMT_MAX_ELEMENTS:
         case LY_STMT_MIN_ELEMENTS:
-            memcpy(orig_substmts[u].storage_p, substmts[u].storage_p, sizeof(uint32_t));
+            memcpy((uint32_t *)substmts[u].storage_p, (uint32_t *)orig_substmts[u].storage_p, sizeof(uint32_t));
             break;
         case LY_STMT_MUST: {
             const struct lysc_must *orig_musts = *orig_substmts[u].storage_p;
@@ -1889,7 +1888,7 @@ ly_ctx_compiled_ext_stmts_storage_print(const struct lysc_ext_substmt *orig_subs
         }
         case LY_STMT_POSITION:
         case LY_STMT_VALUE:
-            memcpy(orig_substmts[u].storage_p, substmts[u].storage_p, sizeof(uint64_t));
+            memcpy(substmts[u].storage_p, orig_substmts[u].storage_p, sizeof(uint64_t));
             break;
         case LY_STMT_TYPE:
             ctxp_type(*orig_substmts[u].storage_p, (struct lysc_type **)substmts[u].storage_p, addr_ht, ptr_set, mem);

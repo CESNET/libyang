@@ -32,6 +32,7 @@ extern "C" {
 struct ly_ctx;
 struct ly_path;
 struct lyd_node;
+struct lyd_val_unres;
 struct lyd_value;
 struct lyd_value_xpath10;
 struct lys_module;
@@ -82,7 +83,7 @@ struct lysc_type_leafref;
  *
  * Usually, all the validation according to the type's restrictions is done in the store callback. However, in case the type
  * requires some validation referencing other entities in the data tree, the optional validation callback
- * ::lyplg_type_validate_clb can be implemented.
+ * ::lyplg_type_validate_tree_clb can be implemented.
  *
  * The stored values can be compared in a specific way by providing ::lyplg_type_compare_clb. In case the best way to compare
  * the values is to compare their canonical string representations, the ::lyplg_type_compare_simple() function can be used.
@@ -121,7 +122,6 @@ struct lysc_type_leafref;
  * - ::lyplg_type_check_status()
  * - ::lyplg_type_lypath_check_status()
  * - ::lyplg_type_identity_isderived()
- * - ::lyplg_type_identity_module()
  * - ::lyplg_type_make_implemented()
  * - ::lyplg_type_parse_dec64()
  * - ::lyplg_type_parse_int()
@@ -142,7 +142,7 @@ struct lysc_type_leafref;
 /**
  * @brief Type API version
  */
-#define LYPLG_TYPE_API_VERSION 3
+#define LYPLG_TYPE_API_VERSION 5
 
 /**
  * @brief Type of the LYB size of a value of a particular type.
@@ -343,20 +343,21 @@ LIBYANG_API_DECL ly_bool lyplg_type_bits_is_bit_set(const char *bitmap, uint32_t
  * @param[in] token Token to transform.
  * @param[in] tok_len Lenghth of @p token.
  * @param[in] is_nametest Whether the token is a nametest, it then always requires a prefix in XML @p get_format.
- * @param[in,out] context_mod Current context module, may be updated.
  * @param[in] resolve_ctx Context to use for resolving prefixes.
  * @param[in] resolve_format Format of the resolved prefixes.
  * @param[in] resolve_prefix_data Resolved prefixes prefix data.
  * @param[in] get_format Format of the output prefixes.
  * @param[in] get_prefix_data Format-specific prefix data for the output.
+ * @param[in,out] ctx_mod Current context module, may be updated.
+ * @param[in,out] ctx_node Current context node, may be updated.
  * @param[out] token_p Printed token.
  * @param[out] err Error structure on error.
  * @return LY_ERR value.
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_xpath10_print_token(const char *token, uint32_t tok_len, ly_bool is_nametest,
-        const struct lys_module **context_mod, const struct ly_ctx *resolve_ctx, LY_VALUE_FORMAT resolve_format,
-        const void *resolve_prefix_data, LY_VALUE_FORMAT get_format, void *get_prefix_data, char **token_p,
-        struct ly_err_item **err);
+        const struct ly_ctx *resolve_ctx, LY_VALUE_FORMAT resolve_format, const void *resolve_prefix_data,
+        LY_VALUE_FORMAT get_format, void *get_prefix_data, const struct lys_module **ctx_mod,
+        const struct lysc_node **ctx_node, char **token_p, struct ly_err_item **err);
 
 /**
  * @brief Get format-specific prefix for a module.
@@ -542,7 +543,7 @@ LIBYANG_API_DECL typedef void (*lyplg_type_lyb_size_clb)(const struct lysc_type 
  * @p value_size_bits is always correct. All store functions have to free a dynamically allocated @p value in all
  * cases (even on error).
  *
- * No unnecessary validation tasks should be performed by this callback and left for ::lyplg_type_validate_clb instead.
+ * No unnecessary validation tasks should be performed by this callback and left for ::lyplg_type_validate_value_clb instead.
  *
  * @param[in] ctx libyang context.
  * @param[in] type Type of the value being stored.
@@ -571,7 +572,7 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_store_clb)(const struct ly_ctx *ctx
  * @brief Callback to validate the stored value local semantic constraints of the type.
  *
  * This callback should perform any required validation of the value after it is stored. If the stored value is always
- * valid disregarding the accessible data tree, this callback should not be defined (but ::lyplg_type_validate_tree()
+ * valid disregarding the accessible data tree, this callback should not be defined (but ::lyplg_type_validate_tree_clb()
  * may be).
  *
  * @param[in] ctx libyang context.
@@ -595,14 +596,17 @@ LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_validate_value_clb)(const struct ly
  * @param[in] type Original type of the value (not necessarily the stored one) being validated.
  * @param[in] ctx_node Value data context node for validation.
  * @param[in] tree External data tree (e.g. when validating RPC/Notification) with possibly referenced data.
+ * @param[in] val_unres Val unres structure with yet unresolved nodes in @p tree.
  * @param[in,out] storage Storage of the value successfully filled by ::lyplg_type_store_clb. May be modified.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
  * error message is prepared instead. The error structure can be created by ::ly_err_new().
  * @return LY_SUCCESS on success,
+ * @return LY_EINCOMPLETE in case the validation cannot be performed because it depends on a node found in @p val_unres,
  * @return LY_ERR value on error.
  */
 LIBYANG_API_DECL typedef LY_ERR (*lyplg_type_validate_tree_clb)(const struct ly_ctx *ctx, const struct lysc_type *type,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lyd_val_unres *val_unres,
+        struct lyd_value *storage, struct ly_err_item **err);
 
 /**
  * @brief Callback for comparing 2 values of the same type.
@@ -896,12 +900,16 @@ LIBYANG_API_DECL LY_ERR lyplg_type_validate_patterns(const struct ly_ctx *ctx, s
  * @param[in] node Context node.
  * @param[in] value Target value.
  * @param[in] tree Full data tree to search in.
+ * @param[in] val_unres Val unres structure with yet unresolved nodes in @p tree.
  * @param[out] targets Pointer to set of target nodes, optional.
  * @param[out] errmsg Error message in case of error.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success;
+ * @return LY_EINCOMPLETE in case a node in @p val_unres is referenced;
+ * @return LY_ERR value on error.
  */
 LIBYANG_API_DECL LY_ERR lyplg_type_resolve_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node,
-        struct lyd_value *value, const struct lyd_node *tree, struct ly_set **targets, char **errmsg);
+        struct lyd_value *value, const struct lyd_node *tree, const struct lyd_val_unres *val_unres,
+        struct ly_set **targets, char **errmsg);
 
 /**
  * @brief Learn the position of the highest set bit in a number. Represents also the least amount of bits

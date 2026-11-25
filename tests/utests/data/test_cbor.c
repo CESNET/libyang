@@ -15,6 +15,8 @@
 #define _UTEST_MAIN_
 #include "utests.h"
 
+#include <cbor.h>
+
 #include "in_internal.h"
 #include "parser_data.h"
 #include "printer_data.h"
@@ -208,6 +210,8 @@ test_operations(void **state)
     const struct test_case tests[] = {
         {"rpc",          "{\"cbor-test:rpc-reset\":{\"lf1\":true}}"},
         {"notification", "{\"cbor-test:notif-alarm\":{\"lf-severity\":\"warning\",\"lf-message\":\"Something\"}}"},
+        {"notification-nested", "{\"cbor-test:list-user\":[{\"key-id\":1,\"notif-user\":{\"lf-reason\":\"x\"}}]}"},
+        {"notification-anydata", "{\"cbor-test:notif-alarm\":{\"anydata-payload\":{\"list-user\":[{\"key-id\":1}]}}}"},
     };
 
     for (i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
@@ -235,6 +239,37 @@ test_operations(void **state)
         free(json);
         lyd_free_all(tree);
     }
+}
+
+static void
+test_structure(void **state)
+{
+    struct lyd_node *tree;
+    char *buffer, *json;
+    struct ly_out *out;
+    const char *mod, *data;
+
+    mod = "module a {yang-version 1.1; namespace urn:tests:a; prefix a;"
+            "import ietf-yang-structure-ext {prefix sx;}"
+            "sx:structure struct {container x {leaf y {type string;} leaf z {type uint8; mandatory true;}}}}";
+    UTEST_ADD_MODULE(mod, LYS_IN_YANG, NULL, NULL);
+
+    data = "{\"a:struct\":{\"x\":{\"y\":\"val\",\"z\":25}}}";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, data, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&buffer, 0, &out));
+    assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_CBOR, 0));
+    lyd_free_all(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, buffer, ly_out_printed(out), LYD_CBOR,
+            LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    ly_out_free(out, NULL, 0);
+    free(buffer);
+    assert_true(tree->flags & LYD_EXT);
+
+    assert_int_equal(LY_SUCCESS, lyd_print_mem(&json, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+    assert_string_equal(json, data);
+    free(json);
+    lyd_free_all(tree);
 }
 
 static LY_ERR
@@ -366,6 +401,40 @@ test_opaque(void **state)
 }
 
 static void
+test_opaque_list(void **state)
+{
+    struct lyd_node *tree;
+    char *buffer, *json;
+    struct ly_out *out;
+    size_t i;
+
+    /* invalid leaf-list values are stored as opaque nodes, one and more instances */
+    const struct test_case tests[] = {
+        {"single",   "{\"cbor-test:ll-intg32\":[\"not a number\"]}"},
+        {"multiple", "{\"cbor-test:ll-intg32\":[\"x\",\"y\",\"z\"]}"},
+        {"nested",   "{\"cbor-test:list-nested\":[{\"id\":\"a\",\"inner\":[{\"iid\":1,\"vals\":[\"q\"]}]}]}"},
+    };
+
+    for (i = 0; i < sizeof tests / sizeof *tests; ++i) {
+        CHECK_PARSE_LYD_PARAM(tests[i].json, LYD_JSON, LYD_PARSE_ONLY | LYD_PARSE_OPAQ, 0, LY_SUCCESS, tree);
+
+        assert_int_equal(LY_SUCCESS, ly_out_new_memory(&buffer, 0, &out));
+        assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_CBOR, 0));
+        lyd_free_all(tree);
+
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, buffer, (uint32_t)ly_out_printed(out), LYD_CBOR,
+                LYD_PARSE_ONLY | LYD_PARSE_OPAQ, 0, &tree));
+        ly_out_free(out, NULL, 0);
+        free(buffer);
+
+        assert_int_equal(LY_SUCCESS, lyd_print_mem(&json, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+        assert_string_equal(json, tests[i].json);
+        free(json);
+        lyd_free_all(tree);
+    }
+}
+
+static void
 test_attributes(void **state)
 {
     struct lyd_node *tree;
@@ -395,6 +464,241 @@ test_attributes(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_attributes_parent(void **state)
+{
+    struct lyd_node *tree;
+    char *buffer, *json;
+    struct ly_out *out;
+    size_t i;
+
+    /* metadata of the parent ("@") followed by metadata of its children */
+    const struct test_case tests[] = {
+        {
+            "leaf",
+            "{\"cbor-test:cont-root\":{\"@\":{\"cbor-test:a1\":\"val1\"},\"lf-root-str\":\"x\","
+            "\"@lf-root-str\":{\"cbor-test:a2\":5}}}"
+        },
+        {
+            "leaf-list",
+            "{\"cbor-test:list-nested\":[{\"@\":{\"cbor-test:a1\":\"val1\"},\"id\":\"a\",\"tags\":[\"t1\",\"t2\"],"
+            "\"@tags\":[{\"cbor-test:a2\":1},{\"cbor-test:a2\":2}]}]}"
+        },
+    };
+
+    /* {"cbor-test:anydata-payload": {"foo": {"@": {"cbor-test:a1": "val1"}, "cbor-test:ll-str": ["a", "b"],
+     *  "@cbor-test:ll-str": [{"cbor-test:a2": 1}, {"cbor-test:a2": 2}]}}} */
+    const char data1[] = "\xa1\x78\x19" "cbor-test:anydata-payload" "\xa1\x63" "foo" "\xa3"
+            "\x61" "@" "\xa1\x6c" "cbor-test:a1" "\x64" "val1"
+            "\x70" "cbor-test:ll-str" "\x82\x61" "a" "\x61" "b"
+            "\x71" "@cbor-test:ll-str" "\x82\xa1\x6c" "cbor-test:a2" "\x01\xa1\x6c" "cbor-test:a2" "\x02";
+
+    /* {"cbor-test:ll-intg32": ["x"], "@cbor-test:ll-intg32": [null, null]} */
+    const char data2[] = "\xa2\x73" "cbor-test:ll-intg32" "\x81\x61" "x" "\x74" "@cbor-test:ll-intg32" "\x82\xf6\xf6";
+
+    for (i = 0; i < sizeof tests / sizeof *tests; ++i) {
+        CHECK_PARSE_LYD_PARAM(tests[i].json, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+
+        assert_int_equal(LY_SUCCESS, ly_out_new_memory(&buffer, 0, &out));
+        assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_CBOR, 0));
+        lyd_free_all(tree);
+
+        assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, buffer, (uint32_t)ly_out_printed(out), LYD_CBOR,
+                0, LYD_VALIDATE_PRESENT, &tree));
+        ly_out_free(out, NULL, 0);
+        free(buffer);
+
+        assert_int_equal(LY_SUCCESS, lyd_print_mem(&json, tree, LYD_JSON, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS));
+        assert_string_equal(json, tests[i].json);
+        free(json);
+        lyd_free_all(tree);
+    }
+
+    /* anydata content is parsed as opaque nodes, the "@" metadata belong to "foo" */
+    CHECK_PARSE_LYD_PARAM_LEN(data1, sizeof data1 - 1, LYD_CBOR, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+
+    /* opaque leaf-list instance */
+    CHECK_PARSE_LYD_PARAM_LEN(data2, sizeof data2 - 1, LYD_CBOR, LYD_PARSE_ONLY | LYD_PARSE_OPAQ, 0, LY_EVALID, tree);
+    CHECK_LOG_CTX("Missing CBOR data instance #2 of cbor-test:ll-intg32 to be coupled with metadata.",
+            "/cbor-test:ll-intg32", 1);
+}
+
+static void
+test_invalid_input(void **state)
+{
+    struct lyd_node *tree = NULL;
+
+    /* truncated map, the input must not stay referenced for logging after the failed parse */
+    CHECK_PARSE_LYD_PARAM_LEN("\xa1", 1, LYD_CBOR, 0, 0, LY_EVALID, tree);
+    CHECK_LOG_CTX("Failed to parse CBOR data (not enough data).", NULL, 1);
+
+#if (CBOR_MAJOR_VERSION > 0) || (CBOR_MINOR_VERSION >= 14)
+    /* text strings must be checked for invalid characters like in JSON and XML */
+    CHECK_PARSE_LYD_PARAM_LEN("\xa1\x70" "cbor-test:lf-str" "\x65" "ab\0cd", 24, LYD_CBOR, LYD_PARSE_ONLY, 0,
+            LY_EVALID, tree);
+    CHECK_LOG_CTX("Invalid character 0x0.", "/cbor-test:lf-str", 1);
+    CHECK_PARSE_LYD_PARAM_LEN("\xa1\x70" "cbor-test:lf-str" "\x62" "a\xff", 21, LYD_CBOR, LYD_PARSE_ONLY, 0,
+            LY_EVALID, tree);
+    CHECK_LOG_CTX("Invalid character 0xff.", "/cbor-test:lf-str", 1);
+    CHECK_PARSE_LYD_PARAM_LEN("\xa1\x70" "cbor-test:lf-str" "\x7f" "\x62" "ab" "\x63" "\0cd" "\xff", 27, LYD_CBOR,
+            LYD_PARSE_ONLY, 0, LY_EVALID, tree);
+    CHECK_LOG_CTX("Invalid character 0x0.", "/cbor-test:lf-str", 1);
+#endif
+
+    assert_int_equal(LY_EVALID, lyd_new_path(NULL, UTEST_LYCTX, "/cbor-test:lf-intg8", "1000", 0, &tree));
+    CHECK_LOG_CTX("Value \"1000\" is out of type int8 min/max bounds.", "/cbor-test:lf-intg8", 0);
+}
+
+static void
+test_negint(void **state)
+{
+    struct lyd_node *tree;
+
+    /* {"cbor-test:lf-uintg8": -18446744073709551611} */
+    const char data1[] = "\xa1\x73" "cbor-test:lf-uintg8" "\x3b\xff\xff\xff\xff\xff\xff\xff\xfa";
+
+    /* {"cbor-test:lf-uintg8": -18446744073709551616} */
+    const char data2[] = "\xa1\x73" "cbor-test:lf-uintg8" "\x3b\xff\xff\xff\xff\xff\xff\xff\xff";
+
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem_len(UTEST_LYCTX, data1, sizeof data1 - 1, LYD_CBOR, 0,
+            LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Value \"-18446744073709551611\" is out of type uint8 min/max bounds.", "/cbor-test:lf-uintg8", 1);
+
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem_len(UTEST_LYCTX, data2, sizeof data2 - 1, LYD_CBOR, 0,
+            LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Invalid type uint8 value \"-18446744073709551616\".", "/cbor-test:lf-uintg8", 1);
+}
+
+static void
+test_anydata_strict(void **state)
+{
+    struct lyd_node *tree;
+
+    /* {"cbor-test:anydata-payload": {"cbor-test:unknown": "v"}} */
+    const char data[] = "\xa1\x78\x19" "cbor-test:anydata-payload" "\xa1\x71" "cbor-test:unknown" "\x61" "v";
+
+    /* unknown anydata content is parsed as opaque nodes */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem_len(UTEST_LYCTX, data, sizeof data - 1, LYD_CBOR, 0,
+            LYD_VALIDATE_PRESENT, &tree));
+    lyd_free_all(tree);
+
+    /* but not with strict anydata parsing */
+    assert_int_equal(LY_EVALID, lyd_parse_data_mem_len(UTEST_LYCTX, data, sizeof data - 1, LYD_CBOR,
+            LYD_PARSE_ANYDATA_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    CHECK_LOG_CTX("Node \"unknown\" not found in the \"cbor-test\" module.", "/cbor-test:anydata-payload", 1);
+}
+
+/* CBOR RESTCONF notification envelope parts */
+#define CBOR_ENVP_KEY "\x78\x1a" "ietf-restconf:notification"
+#define CBOR_EVENT_TIME "\x69" "eventTime" "\x74" "2013-12-21T00:01:00Z"
+#define CBOR_NOTIF "\x75" "cbor-test:notif-alarm" "\xa1" "\x6a" "lf-message" "\x61" "m"
+
+static void
+test_restconf_notification(void **state)
+{
+    struct lyd_node *tree, *ntf;
+    struct ly_in *in;
+    uint32_t i;
+    const char *tests[] = {
+        /* eventTime first, as RFC 8040 shows it */
+        "\xa1" CBOR_ENVP_KEY "\xa2" CBOR_EVENT_TIME CBOR_NOTIF,
+        /* eventTime last, map members are unordered */
+        "\xa1" CBOR_ENVP_KEY "\xa2" CBOR_NOTIF CBOR_EVENT_TIME,
+        /* indefinite-length map, as the libyang CBOR printer encodes maps */
+        "\xa1" CBOR_ENVP_KEY "\xbf" CBOR_NOTIF CBOR_EVENT_TIME "\xff",
+        /* indefinite-length strings */
+        "\xa1" "\x7f" "\x6e" "ietf-restconf:" "\x6c" "notification" "\xff"
+        "\xa2" "\x69" "eventTime" "\x7f" "\x6a" "2013-12-21" "\x6a" "T00:01:00Z" "\xff" CBOR_NOTIF,
+    };
+
+    for (i = 0; i < sizeof tests / sizeof *tests; ++i) {
+        assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(tests[i], strlen(tests[i]), &in));
+        assert_int_equal(LY_SUCCESS, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_CBOR, LYD_TYPE_NOTIF_RESTCONF,
+                LYD_PARSE_STRICT, &tree, &ntf));
+        ly_in_free(in, 0);
+
+        CHECK_LYD_STRING_PARAM(tree, "{\"ietf-restconf:notification\":{\"eventTime\":\"2013-12-21T00:01:00Z\"}}",
+                LYD_JSON, LYD_PRINT_SHRINK);
+        CHECK_LYD_STRING_PARAM(ntf, "{\"cbor-test:notif-alarm\":{\"lf-message\":\"m\"}}", LYD_JSON, LYD_PRINT_SHRINK);
+        lyd_free_all(tree);
+        lyd_free_all(ntf);
+    }
+}
+
+static void
+test_restconf_notification_invalid(void **state)
+{
+    struct lyd_node *tree, *ntf, *rpc = NULL;
+    struct ly_in *in;
+    uint32_t i;
+
+    const struct {
+        const char *data;
+        const char *msg;
+        const char *path;
+    } tests[] = {
+        {
+            "\xa1" CBOR_NOTIF,
+            "Unexpected object \"cbor-test:notif-alarm\" instead of \"ietf-restconf:notification\".", NULL
+        },
+        {
+            "\xa2" CBOR_ENVP_KEY "\xa0" CBOR_NOTIF,
+            "Expected a single CBOR map member \"ietf-restconf:notification\".", NULL
+        },
+        {
+            "\xa1" CBOR_ENVP_KEY "\x01",
+            "Expecting CBOR map but unsigned integer found.", NULL
+        },
+        {
+            "\xa1" CBOR_ENVP_KEY "\xa1" CBOR_NOTIF,
+            "Missing notification \"eventTime\" node.", NULL
+        },
+        {
+            "\xa1" CBOR_ENVP_KEY "\xa2" "\x69" "eventTime" "\x01" CBOR_NOTIF,
+            "Expecting CBOR string but unsigned integer found.", NULL
+        },
+        {
+            "\xa1" CBOR_ENVP_KEY "\xa3" CBOR_EVENT_TIME CBOR_EVENT_TIME CBOR_NOTIF,
+            "Duplicate notification \"eventTime\" node.", NULL
+        },
+        {
+            "\xa1" CBOR_ENVP_KEY "\xa2" "\x69" "eventTime" "\x64" "2013" CBOR_NOTIF,
+            "Unsatisfied pattern - \"2013\" does not match \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])"
+            "T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?"
+            "(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\".", "/yang:date-and-time"
+        },
+        {
+            "\xa1" CBOR_ENVP_KEY "\xa1" CBOR_EVENT_TIME,
+            "Missing the operation node.", NULL
+        },
+    };
+
+    for (i = 0; i < sizeof tests / sizeof *tests; ++i) {
+        assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(tests[i].data, strlen(tests[i].data), &in));
+        assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_CBOR, LYD_TYPE_NOTIF_RESTCONF, 0,
+                &tree, &ntf));
+        CHECK_LOG_CTX(tests[i].msg, tests[i].path, 1);
+        ly_in_free(in, 0);
+        lyd_free_all(tree);
+    }
+
+    /* unknown data length */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(tests[0].data, &in));
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_CBOR, LYD_TYPE_NOTIF_RESTCONF, 0, &tree, &ntf));
+    CHECK_LOG_CTX("Failed to parse CBOR data (unknown data length).", NULL, 0);
+    ly_in_free(in, 0);
+
+    /* RESTCONF RPC is not supported in CBOR */
+    assert_int_equal(LY_SUCCESS, lyd_new_inner(NULL, ly_ctx_get_module_implemented(UTEST_LYCTX, "cbor-test"),
+            "rpc-reset", 0, &rpc));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(tests[0].data, strlen(tests[0].data), &in));
+    assert_int_equal(LY_EINVAL, lyd_parse_op(UTEST_LYCTX, rpc, in, LYD_CBOR, LYD_TYPE_RPC_RESTCONF, 0, &tree, NULL));
+    CHECK_LOG_CTX("Invalid argument (format == LYD_XML) || (format == LYD_JSON) (lyd_parse_op()).", NULL, 0);
+    ly_in_free(in, 0);
+    lyd_free_tree(rpc);
+}
+
 int
 main(void)
 {
@@ -402,9 +706,17 @@ main(void)
         UTEST(test_node, setup),
         UTEST(test_nested_list, setup),
         UTEST(test_operations, setup),
+        UTEST(test_structure, setup),
         UTEST(test_schema_mount, setup),
         UTEST(test_opaque, setup),
+        UTEST(test_opaque_list, setup),
         UTEST(test_attributes, setup),
+        UTEST(test_attributes_parent, setup),
+        UTEST(test_invalid_input, setup),
+        UTEST(test_negint, setup),
+        UTEST(test_anydata_strict, setup),
+        UTEST(test_restconf_notification, setup),
+        UTEST(test_restconf_notification_invalid, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

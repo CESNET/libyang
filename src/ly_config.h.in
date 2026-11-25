@@ -53,10 +53,10 @@
 /** printf compiler attribute */
 #if defined (__GNUC__) || defined (__llvm__)
 # define _FORMAT_PRINTF(FORM, ARGS) __attribute__((format (printf, FORM, ARGS)))
-# define _DEPRECATED __attribute__((__deprecated__))
+# define LY_DEPRECATED __attribute__((__deprecated__))
 #else
 # define _FORMAT_PRINTF(FORM, ARGS)
-# define _DEPRECATED
+# define LY_DEPRECATED
 #endif
 
 /** Exporting symbols to a shared library and importing back afterwards
@@ -88,5 +88,8 @@
 
 /** regex.h BSD flag */
 #cmakedefine HAVE_REG_STARTEND
+
+/** libyang built with CBOR support (libcbor), ::LYD_CBOR is usable */
+#cmakedefine LY_HAVE_CBOR
 
 #endif /* LY_CONFIG_H_ */

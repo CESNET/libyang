@@ -61,13 +61,13 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 # set version of the project
 set(LIBYANG_MAJOR_VERSION 6)
 set(LIBYANG_MINOR_VERSION 4)
-set(LIBYANG_MICRO_VERSION 13)
+set(LIBYANG_MICRO_VERSION 35)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 
 # set version of the library
 set(LIBYANG_MAJOR_SOVERSION 5)
-set(LIBYANG_MINOR_SOVERSION 11)
-set(LIBYANG_MICRO_SOVERSION 11)
+set(LIBYANG_MINOR_SOVERSION 13)
+set(LIBYANG_MICRO_SOVERSION 8)
 set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
@@ -137,6 +137,7 @@ set(libsrc
     src/printer_lyb.c
     src/schema_compile.c
     src/schema_compile_node.c
+    src/schema_compile_type.c
     src/schema_compile_amend.c
     src/schema_features.c
     src/schema_diff.c
@@ -213,6 +214,7 @@ set(internal_headers
     src/schema_compile.h
     src/schema_compile_amend.h
     src/schema_compile_node.h
+    src/schema_compile_type.h
     src/schema_features.h
     src/schema_diff.h
     src/tree_data_internal.h
@@ -340,6 +342,7 @@ endif()
 
 find_package(CBOR)
 if(CBOR_FOUND)
+    set(LY_HAVE_CBOR 1)
     list(APPEND libsrc src/parser_cbor.c src/lcbor.c src/printer_cbor.c)
     list(APPEND headers src/lcbor.h)
     list(APPEND format_sources src/parser_cbor.c src/lcbor.h src/lcbor.c src/printer_cbor.c)
@@ -464,10 +467,8 @@ target_link_libraries(yang ${PCRE2_LIBRARIES})
 # link libcbor if found
 if(CBOR_FOUND)
     if(TARGET yangobj)
-        target_compile_definitions(yangobj PRIVATE ENABLE_CBOR_SUPPORT)
         target_include_directories(yangobj PRIVATE ${CBOR_INCLUDE_DIR})
     endif()
-    target_compile_definitions(yang PRIVATE ENABLE_CBOR_SUPPORT)
     target_include_directories(yang PRIVATE ${CBOR_INCLUDE_DIR})
     target_link_libraries(yang ${CBOR_LIBRARY})
 endif()

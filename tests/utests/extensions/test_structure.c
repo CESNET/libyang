@@ -216,9 +216,12 @@ test_parse(void **state)
 
     yang = "module a {yang-version 1.1; namespace urn:tests:extensions:structure:a; prefix a;"
             "import ietf-yang-structure-ext {prefix sx;}"
-            "sx:structure struct { container x { leaf x { type leafref {path \"/x/y\"; }}"
-            "anydata any;"
-            "leaf y { type string; must \"/x/y = 'val'\";} leaf z { type instance-identifier;}}}}";
+            "sx:structure struct { container x {"
+            "  leaf x { type leafref {path \"/x/y\"; }}"
+            "  anydata any;"
+            "  leaf y { type string; must \"/x/y = 'val'\";}"
+            "  leaf z { type instance-identifier;}"
+            "}}}";
     UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, NULL);
 
     yang = "module b {yang-version 1.1; namespace urn:tests:extensions:structure:b; prefix b;"
@@ -296,7 +299,7 @@ test_parse(void **state)
     lyd_free_tree(node->next);
     assert_string_equal(LYD_NAME(node), "x");
     lyd_free_tree(node);
-    assert_int_equal(LY_ENOTFOUND, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
+    assert_int_equal(LY_EVALID, lyd_validate_all(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
     CHECK_LOG_CTX("Invalid instance-identifier \"/a:x/y\" value - required instance not found.",
             "/a:struct/x/struct/x/z", 0);
     lyd_free_all(tree);

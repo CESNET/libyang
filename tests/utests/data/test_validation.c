@@ -1,9 +1,10 @@
 /**
  * @file test_validation.c
- * @author: Radek Krejci <rkrejci@cesnet.cz>
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for functions from validation.c
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -26,6 +27,37 @@
 
 #define LYD_TREE_CREATE(INPUT, MODEL) \
                 CHECK_PARSE_LYD_PARAM(INPUT, LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, MODEL)
+
+static void
+test_leafref(void **state)
+{
+    struct lyd_node *tree;
+    const char *schema =
+            "module a {\n"
+            "    namespace urn:tests:a;\n"
+            "    prefix a;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    leaf t {\n"
+            "        type uint8;\n"
+            "        default 7;\n"
+            "    }\n"
+            "    leaf ref {\n"
+            "        type leafref {\n"
+            "            path \"/a:t\";\n"
+            "        }\n"
+            "    }\n"
+            "}";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    /* must have the same result whether present is used or not */
+    CHECK_PARSE_LYD_PARAM("<ref xmlns=\"urn:tests:a\">7</ref>", LYD_XML, 0, LYD_VALIDATE_NO_STATE, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+
+    CHECK_PARSE_LYD_PARAM("<ref xmlns=\"urn:tests:a\">7</ref>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_all(tree);
+}
 
 static void
 test_when(void **state)
@@ -1130,6 +1162,57 @@ test_defaults(void **state)
 }
 
 static void
+test_defaults_order(void **state)
+{
+    struct lyd_node *tree = NULL;
+    struct lys_module *mod1, *mod2;
+    const char *schema1 =
+            "module a {\n"
+            "  namespace urn:tests:a;\n"
+            "  prefix a;\n"
+            "  yang-version 1.1;\n"
+            "\n"
+            "  leaf c {\n"
+            "    when \"false()\";\n"
+            "    type string;\n"
+            "    default \"on\";\n"
+            "  }\n"
+            "  leaf b {\n"
+            "    when \"/a:c = 'on'\";\n"
+            "    type string;\n"
+            "    default \"on\";\n"
+            "  }\n"
+            "}";
+    const char *schema2 =
+            "module ra {\n"
+            "  namespace urn:tests:ra;\n"
+            "  prefix ra;\n"
+            "  yang-version 1.1;\n"
+            "\n"
+            "  leaf b {\n"
+            "    when \"/ra:c = 'on'\";\n"
+            "    type string;\n"
+            "    default \"on\";\n"
+            "  }\n"
+            "  leaf c {\n"
+            "    when \"false()\";\n"
+            "    type string;\n"
+            "    default \"on\";\n"
+            "  }\n"
+            "}";
+
+    UTEST_ADD_MODULE(schema1, LYS_IN_YANG, NULL, &mod1);
+    UTEST_ADD_MODULE(schema2, LYS_IN_YANG, NULL, &mod2);
+
+    /* must have the same result no matter the node order */
+    assert_int_equal(LY_SUCCESS, lyd_new_implicit_module(&tree, mod1, 0, NULL));
+    assert_null(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_new_implicit_module(&tree, mod2, 0, NULL));
+    assert_null(tree);
+}
+
+static void
 test_state(void **state)
 {
     const char *data;
@@ -1299,6 +1382,119 @@ test_multi_error(void **state)
     CHECK_LOG_CTX_APPTAG("Must condition \"../l = 'right'\" not satisfied.", "/ii:cont/l2", 0, "must-violation");
     CHECK_LOG_CTX_APPTAG("Duplicate instance of \"l\".", "/ii:cont/l", 0, NULL);
     CHECK_LOG_CTX_APPTAG("Duplicate instance of \"l\".", "/ii:cont/l", 0, NULL);
+}
+
+static void
+test_require_instance(void **state)
+{
+    struct lyd_node *tree, *match = NULL;
+    struct lyd_node_term *term;
+    const char *schema =
+            "module ri {\n"
+            "    namespace urn:tests:ri;\n"
+            "    prefix ri;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    leaf t {\n"
+            "        type string;\n"
+            "    }\n"
+            "    leaf lr {\n"
+            "        type leafref {\n"
+            "            path \"/ri:t\";\n"
+            "        }\n"
+            "    }\n"
+            "    leaf ii {\n"
+            "        type instance-identifier;\n"
+            "    }\n"
+            "    leaf uni {\n"
+            "        type union {\n"
+            "            type decimal64 {\n"
+            "                fraction-digits 1;\n"
+            "            }\n"
+            "            type leafref {\n"
+            "                path '../t';\n"
+            "            }\n"
+            "            type union {\n"
+            "                type instance-identifier;\n"
+            "                type union {\n"
+            "                    type binary {\n"
+            "                        length 1;\n"
+            "                    }\n"
+            "                    type decimal64 {\n"
+            "                        fraction-digits 3;\n"
+            "                    }\n"
+            "                }\n"
+            "            }\n"
+            "        }\n"
+            "    }\n"
+            "}";
+    const char *data;
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    CHECK_PARSE_LYD_PARAM("<lr xmlns=\"urn:tests:ri\">x</lr>", LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX_APPTAG("Invalid leafref value \"x\" - no target instance \"/ri:t\" with the same value.", "/ri:lr", 0,
+            "instance-required");
+
+    CHECK_PARSE_LYD_PARAM("<ii xmlns=\"urn:tests:ri\" xmlns:ri=\"urn:tests:ri\">/ri:t</ii>", LYD_XML, 0,
+            LYD_VALIDATE_PRESENT, LY_EVALID, tree);
+    CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/ri:t\" value - required instance not found.", "/ri:ii", 0,
+            "instance-required");
+
+    /* both errors */
+    data =
+            "<lr xmlns=\"urn:tests:ri\">x</lr>\n"
+            "<ii xmlns=\"urn:tests:ri\" xmlns:ri=\"urn:tests:ri\">/ri:t</ii>\n";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
+    const struct ly_err_item *e = ly_err_last(UTEST_LYCTX);
+
+    /* node-address based HT so the order is random */
+    if (!strcmp(e->data_path, "/ri:lr")) {
+        CHECK_LOG_CTX_APPTAG("Invalid leafref value \"x\" - no target instance \"/ri:t\" with the same value.", "/ri:lr", 0,
+                "instance-required");
+        CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/ri:t\" value - required instance not found.", "/ri:ii", 0,
+                "instance-required");
+    } else {
+        CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/ri:t\" value - required instance not found.", "/ri:ii", 0,
+                "instance-required");
+        CHECK_LOG_CTX_APPTAG("Invalid leafref value \"x\" - no target instance \"/ri:t\" with the same value.", "/ri:lr", 0,
+                "instance-required");
+    }
+
+    /* self-referencing instanceid */
+    CHECK_PARSE_LYD_PARAM("<uni xmlns=\"urn:tests:ri\" xmlns:ri=\"urn:tests:ri\">/ri:uni</uni>", LYD_XML, 0,
+            LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    CHECK_LOG_CTX("Node \"uni\" value \"/ri:uni\" has a cyclic dependency.", NULL, 0);
+
+    assert_string_equal(LYD_NAME(tree), "uni");
+    term = (struct lyd_node_term *)tree;
+    assert_int_equal(term->value.realtype->basetype, LY_TYPE_UNION);
+    assert_int_equal(term->value.subvalue->value.realtype->basetype, LY_TYPE_INST);
+    assert_int_equal(LY_SUCCESS, lyd_find_target(term->value.subvalue->value.target, tree, &match));
+    assert_ptr_equal(match, tree);
+    lyd_free_siblings(tree);
+
+    schema =
+            "module ri2 {\n"
+            "    namespace urn:tests:ri2;\n"
+            "    prefix ri2;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    leaf t {\n"
+            "        when \"../ii\";\n"
+            "        type string;\n"
+            "    }\n"
+            "    leaf ii {\n"
+            "        type instance-identifier;\n"
+            "    }\n"
+            "}";
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data = "<t xmlns=\"urn:tests:ri2\">str</t>\n"
+            "<ii xmlns=\"urn:tests:ri2\" xmlns:ri2=\"urn:tests:ri2\">/ri2:t</ii>\n";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, 0, LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_SUCCESS, tree);
+    CHECK_LOG_CTX("When condition of \"t\" has a cyclic dependency on the value of \"ii\".", NULL, 0);
+    lyd_free_siblings(tree);
 }
 
 const char *schema_j =
@@ -1776,8 +1972,15 @@ test_when_must_cross_ref(void **state)
     /* only the when errors must be reported; no spurious leafref error for ref */
     CHECK_PARSE_LYD_PARAM(data3, LYD_XML, 0,
             LYD_VALIDATE_PRESENT | LYD_VALIDATE_MULTI_ERROR, LY_EVALID, tree);
-    CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/selector", 0);
-    CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/ref", 0);
+    const struct ly_err_item *e = ly_err_last(UTEST_LYCTX);
+
+    if (!strcmp(e->data_path, "/twm3:top/selector")) {
+        CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/selector", 0);
+        CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/ref", 0);
+    } else {
+        CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/ref", 0);
+        CHECK_LOG_CTX("When condition \"../flag = 'true'\" not satisfied.", "/twm3:top/selector", 0);
+    }
 
     /* Regression: explicitly exercise the hash-based child lookup path
      * (moveto_node_hash_child in src/xpath.c) for a when-false KEYED LIST. The
@@ -1932,10 +2135,53 @@ test_when_nested(void **state)
     CHECK_LOG_CTX("When condition \"../enabled = 'true'\" not satisfied.", "/poc:config/ref-container", 0);
 }
 
+static void
+test_top_augment(void **state)
+{
+    struct lyd_node *tree;
+    const char *schema1 =
+            "module s1 {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:s1\";\n"
+            "  prefix s1;\n"
+            "\n"
+            "  choice mode {\n"
+            "    leaf first {\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    const char *schema2 =
+            "module s2 {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:s2\";\n"
+            "  prefix s2;\n"
+            "\n"
+            "  import s1 {\n"
+            "    prefix s1;\n"
+            "  }\n"
+            "\n"
+            "  augment \"/s1:mode\" {\n"
+            "    leaf second {\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "}\n";
+    const char *data =
+            "<second xmlns=\"urn:s2\">x</second>\n";
+
+    UTEST_ADD_MODULE(schema1, LYS_IN_YANG, NULL, NULL);
+    UTEST_ADD_MODULE(schema2, LYS_IN_YANG, NULL, NULL);
+
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+    lyd_free_siblings(tree);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
+        UTEST(test_leafref),
         UTEST(test_when),
         UTEST(test_when_rpc_reply),
         UTEST(test_mandatory),
@@ -1947,9 +2193,11 @@ main(void)
         UTEST(test_unique_nested),
         UTEST(test_dup),
         UTEST(test_defaults),
+        UTEST(test_defaults_order),
         UTEST(test_state),
         UTEST(test_must),
         UTEST(test_multi_error),
+        UTEST(test_require_instance),
         UTEST(test_when_must_cross_ref),
         UTEST(test_action),
         UTEST(test_rpc),
@@ -1958,6 +2206,7 @@ main(void)
         UTEST(test_pattern),
         UTEST(test_store_only),
         UTEST(test_when_nested),
+        UTEST(test_top_augment),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

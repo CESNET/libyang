@@ -100,18 +100,66 @@ lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx)
     return (struct ly_ht_rec *)&recs[idx * rec_size];
 }
 
-/* Iterate all records in a hlist */
-#define LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec)               \
-    for (rec_idx = ht->hlists[hlist_idx].first,                         \
-             rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx);       \
-         rec_idx != LYHT_NO_RECORD;                                     \
-         rec_idx = rec->next,                                           \
+/**
+ * @brief Iterate over all records in a hlist.
+ *
+ * Needs to be followed by '{'.
+ *
+ * @param[in] ht Hash table.
+ * @param[in] hlist_idx Head list index.
+ * @param[in,out] rec_idx Record index.
+ * @param[out] rec Record iterator to use.
+ */
+#define LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec)           \
+    for (rec_idx = ht->hlists[hlist_idx].first,                     \
+             rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx);   \
+         rec_idx != LYHT_NO_RECORD;                                 \
+         rec_idx = rec->next,                                       \
              rec = lyht_get_rec(ht->recs, ht->rec_size, rec_idx))
 
-/* Iterate all records in the hash table */
-#define LYHT_ITER_ALL_RECS(ht, hlist_idx, rec_idx, rec)              \
-    for (hlist_idx = 0; hlist_idx < ht->size; hlist_idx++)           \
-        LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec)
+/**
+ * @brief Iterate over all filled records in a hash table.
+ *
+ * Needs to be followed by '{'.
+ *
+ * @param[in] ht Hash table.
+ * @param[out] rec Record iterator to use.
+ */
+#define LYHT_ITER_ALL_RECS(ht, rec)                                                         \
+    for (struct { uint32_t hlist_idx; uint32_t rec_idx; } _iter = {0};   \
+            _iter.hlist_idx < ht->size;                                                     \
+            _iter.hlist_idx++)                                                              \
+        LYHT_ITER_HLIST_RECS(ht, _iter.hlist_idx, _iter.rec_idx, rec)
+
+/**
+ * @brief Iterate safely over all records in a hlist.
+ *
+ * @param[in] ht Hash table.
+ * @param[in] hlist_idx Head list index.
+ * @param[in,out] hlist_recs Cached records of the hlist, value NULL on first call.
+ * @param[in,out] idx Current index in @p hlist_recs, value NULL on first call.
+ * @return Next hlist record;
+ * @return NULL if no more records in the hlist found.
+ */
+struct ly_ht_rec *lyht_get_rec_next_safe(struct ly_ht *ht, uint32_t hlist_idx, struct ly_ht_rec ***hlist_recs,
+        uint32_t *idx);
+
+/**
+ * @brief Iterate safely over all filled records in a hash table.
+ *
+ * Items may be ONLY REMOVED from the hash table while iterating over it.
+ *
+ * Needs to be followed by '{'.
+ *
+ * @param[in] ht Hash table.
+ * @param[in,out] hlist_recs Cached hlist records, value NULL on first call, free with LYA_FREE on loop break.
+ * @param[out] rec Record iterator to use.
+ */
+#define LYHT_ITER_ALL_RECS_SAFE(ht, hlist_recs, rec)                    \
+    for (struct { uint32_t hlist_idx; uint32_t rec_idx; } _iter = {0};  \
+            _iter.hlist_idx < ht->size;                                 \
+            _iter.hlist_idx++)                                          \
+        while ((rec = lyht_get_rec_next_safe(ht, _iter.hlist_idx, hlist_recs, &_iter.rec_idx)))
 
 /**
  * @brief Dictionary hash table record.

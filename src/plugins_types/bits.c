@@ -261,7 +261,7 @@ static LY_ERR
 bits_items2canon(struct lysc_type_bitenum_item **items, char **canonical)
 {
     char *ret;
-    uint32_t ret_len;
+    uint32_t ret_size, ret_len;
     LYA_COUNT_T u;
 
     *canonical = NULL;
@@ -269,22 +269,12 @@ bits_items2canon(struct lysc_type_bitenum_item **items, char **canonical)
     /* init value */
     ret = strdup("");
     LY_CHECK_RET(!ret, LY_EMEM);
+    ret_size = 1;
     ret_len = 0;
 
     LYA_FOR(items, u) {
-        if (!ret_len) {
-            ret = ly_realloc(ret, strlen(items[u]->name) + 1);
-            LY_CHECK_RET(!ret, LY_EMEM);
-            strcpy(ret, items[u]->name);
-
-            ret_len = strlen(ret);
-        } else {
-            ret = ly_realloc(ret, ret_len + 1 + strlen(items[u]->name) + 1);
-            LY_CHECK_RET(!ret, LY_EMEM);
-            sprintf(ret + ret_len, " %s", items[u]->name);
-
-            ret_len += 1 + strlen(items[u]->name);
-        }
+        LY_CHECK_ERR_RET(ly_append_str(&ret, &ret_size, &ret_len, "%s%s", ret_len ? " " : "", items[u]->name),
+                free(ret), LY_EMEM);
     }
 
     *canonical = ret;

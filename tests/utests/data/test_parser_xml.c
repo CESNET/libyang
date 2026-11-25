@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for functions from parser_xml.c
  *
- * Copyright (c) 2019 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2019 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -784,6 +784,19 @@ test_netconf_action(void **state)
     lyd_free_all(tree);
     lyd_free_all(op);
 
+    /* value in the action envelope */
+    data = "<rpc message-id=\"25\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">"
+            "<action xmlns=\"urn:ietf:params:xml:ns:yang:1\">val</action>"
+            "</rpc>\n";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
+    tree = op = NULL;
+    assert_int_equal(LY_EVALID, lyd_parse_op(UTEST_LYCTX, NULL, in, LYD_XML, LYD_TYPE_RPC_NETCONF, LYD_PARSE_STRICT,
+            &tree, &op));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Unexpected value \"val\" in the \"action\" element.", NULL, 1);
+    assert_null(tree);
+    assert_null(op);
+
     /* wrong namespace, element name, whatever... */
     /* TODO */
 }
@@ -1101,6 +1114,43 @@ test_subtree(void **state)
     lyd_free_all(tree);
 }
 
+static void
+test_union_leafref(void **state)
+{
+    struct lyd_node *tree;
+    const char *data, *schema;
+
+    schema =
+            "module b {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:example:b\";\n"
+            "  prefix b;\n"
+            "\n"
+            "  leaf t {\n"
+            "    type uint8;\n"
+            "  }\n"
+            "  leaf d {\n"
+            "    type union {\n"
+            "      type leafref {\n"
+            "        path \"/b:t\";\n"
+            "      }\n"
+            "      type string;\n"
+            "    }\n"
+            "  }\n"
+            "  leaf y {\n"
+            "    when \"/b:d = '01'\";\n"
+            "    type string;\n"
+            "  }\n"
+            "}\n";
+
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data = "<d xmlns=\"urn:example:b\">01</d><y xmlns=\"urn:example:b\">z</y>";
+    CHECK_PARSE_LYD(data, 0, LYD_VALIDATE_PRESENT, tree);
+    CHECK_LYD_STRING(tree, LYD_PRINT_SHRINK | LYD_PRINT_SIBLINGS, data);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -1125,6 +1175,7 @@ main(void)
         UTEST(test_data_skip, setup),
         UTEST(test_metadata, setup),
         UTEST(test_subtree, setup),
+        UTEST(test_union_leafref),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

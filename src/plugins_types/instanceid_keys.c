@@ -60,13 +60,13 @@ instanceid_keys_print_value(const struct lyd_value_instance_identifier_keys *val
         char **str_value, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint32_t cur_idx = 0, str_len = 0;
+    uint32_t cur_idx = 0, str_size = 0, str_len = 0;
     enum lyxp_token cur_tok;
     char *str_tok;
-    void *mem;
     const char *cur_exp_ptr;
     ly_bool is_nt;
-    const struct lys_module *context_mod = NULL, *local_mod = NULL;
+    const struct lys_module *local_mod = NULL, *ctx_mod = NULL;
+    const struct lysc_node *ctx_node = NULL;
     struct ly_set *mods;
 
     *str_value = NULL;
@@ -85,31 +85,20 @@ instanceid_keys_print_value(const struct lyd_value_instance_identifier_keys *val
         if ((cur_tok == LYXP_TOKEN_NAMETEST) || (cur_tok == LYXP_TOKEN_LITERAL)) {
             /* tokens that may include prefixes, get them in the target format */
             is_nt = (cur_tok == LYXP_TOKEN_NAMETEST) ? 1 : 0;
-            LY_CHECK_GOTO(ret = lyplg_type_xpath10_print_token(cur_exp_ptr, val->keys->tok_len[cur_idx], is_nt, &context_mod,
-                    val->ctx, val->format, val->prefix_data, format, prefix_data, &str_tok, err), cleanup);
+            LY_CHECK_GOTO(ret = lyplg_type_xpath10_print_token(cur_exp_ptr, val->keys->tok_len[cur_idx], is_nt, val->ctx,
+                    val->format, val->prefix_data, format, prefix_data, &ctx_mod, &ctx_node, &str_tok, err), cleanup);
 
             /* append the converted token */
-            mem = realloc(*str_value, str_len + strlen(str_tok) + 1);
-            if (!mem) {
-                free(str_tok);
-                ret = ly_err_new_no_mem(err);
-                goto cleanup;
-            }
-            *str_value = mem;
-            str_len += sprintf(*str_value + str_len, "%s", str_tok);
+            ret = ly_append_str(str_value, &str_size, &str_len, "%s", str_tok);
             free(str_tok);
+            LY_CHECK_ERR_GOTO(ret, ret = ly_err_new_no_mem(err), cleanup);
 
             /* token processed */
             ++cur_idx;
         } else {
             /* just copy the token */
-            mem = realloc(*str_value, str_len + val->keys->tok_len[cur_idx] + 1);
-            if (!mem) {
-                ret = ly_err_new_no_mem(err);
-                goto cleanup;
-            }
-            *str_value = mem;
-            str_len += sprintf(*str_value + str_len, "%.*s", (int)val->keys->tok_len[cur_idx], cur_exp_ptr);
+            ret = ly_append_str(str_value, &str_size, &str_len, "%.*s", (int)val->keys->tok_len[cur_idx], cur_exp_ptr);
+            LY_CHECK_ERR_GOTO(ret, ret = ly_err_new_no_mem(err), cleanup);
 
             /* token processed */
             ++cur_idx;

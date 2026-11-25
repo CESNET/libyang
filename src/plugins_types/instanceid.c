@@ -234,10 +234,10 @@ cleanup:
 
 static LY_ERR
 lyplg_type_validate_tree_instanceid(const struct ly_ctx *ctx, const struct lysc_type *UNUSED(type),
-        const struct lyd_node *ctx_node, const struct lyd_node *UNUSED(tree), struct lyd_value *storage,
-        struct ly_err_item **err)
+        const struct lyd_node *ctx_node, const struct lyd_node *UNUSED(tree), const struct lyd_val_unres *val_unres,
+        struct lyd_value *storage, struct ly_err_item **err)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR r;
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)storage->realtype;
     const char *value;
     char *path;
@@ -253,10 +253,13 @@ lyplg_type_validate_tree_instanceid(const struct ly_ctx *ctx, const struct lysc_
     }
 
     /* find the target in data */
-    if ((ret = ly_path_eval(storage->target, ctx_node, NULL, NULL))) {
+    r = ly_path_eval(storage->target, ctx_node, val_unres, NULL, NULL);
+    if (r == LY_EINCOMPLETE) {
+        return r;
+    } else if (r) {
         value = lyd_value_get_canonical(ctx, storage);
         path = lyd_path(ctx_node, LYD_PATH_STD, NULL, 0);
-        return ly_err_new(err, ret, LYVE_DATA, path, strdup("instance-required"), LY_ERRMSG_NOINST, value);
+        return ly_err_new(err, LY_EVALID, LYVE_DATA, path, strdup("instance-required"), LY_ERRMSG_NOINST, value);
     }
 
     return LY_SUCCESS;

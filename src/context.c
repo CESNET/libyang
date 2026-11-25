@@ -802,18 +802,22 @@ ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
 LIBYANG_API_DEF void
 ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data)
 {
+    struct lys_module *mod;
+    uint32_t i;
+    LYA_COUNT_T u;
+
     LY_CHECK_ARG_RET(ctx, ctx, !(ctx->opts & LY_CTX_INT_IMMUTABLE), );
 
     ctx->imp_clb = clb;
     ctx->imp_clb_data = user_data;
 
     /* new import callback - reset latests flags (possibly new revisions available) */
-    for (uint32_t v = 0; v < ctx->modules.count; ++v) {
-        struct lys_module *mod = ctx->modules.objs[v];
-
+    for (i = 0; i < ctx->modules.count; ++i) {
+        mod = ctx->modules.objs[i];
         mod->latest_revision &= ~LYS_MOD_LATEST_IMPCLB;
+
         if (mod->parsed && mod->parsed->includes) {
-            for (LYA_COUNT_T u = 0; u < LYA_COUNT(mod->parsed->includes); ++u) {
+            LYA_FOR(mod->parsed->includes, u) {
                 mod->parsed->includes[u].submodule->latest_revision &= ~LYS_MOD_LATEST_IMPCLB;
             }
         }
@@ -1107,6 +1111,67 @@ LIBYANG_API_DEF const struct lysp_submodule *
 ly_ctx_get_submodule2_latest(const struct lys_module *module, const char *submodule)
 {
     return _ly_ctx_get_submodule2(module, submodule, NULL, 1);
+}
+
+/**
+ * @brief Try to find a compiled submodule in the context.
+ *
+ * @param[in] ctx Context where to search in.
+ * @param[in] submodule Name of the submodule to find.
+ * @param[in] revision Revision of the submodule to find. NULL for submodule with no revision.
+ * @param[in] latest Ignore @p revision and look for the latest revision.
+ * @return Pointer to the specified submodule if it is present in the context.
+ */
+static const struct lysc_submodule *
+_ly_ctx_get_submodule3(const struct ly_ctx *ctx, const char *submodule, const char *revision, ly_bool latest)
+{
+    const struct lys_module *mod;
+    const struct lysc_submodule *submod = NULL;
+    uint32_t i;
+    LYA_COUNT_T u;
+
+    for (i = 0; i < ctx->modules.count; ++i) {
+        mod = ctx->modules.objs[i];
+
+        LYA_FOR(mod->submodules, u) {
+            if (strcmp(mod->submodules[u].name, submodule)) {
+                continue;
+            }
+
+            if (latest) {
+                /* first found, whatever */
+                submod = &mod->submodules[u];
+                break;
+            }
+
+            if (!revision && !mod->submodules[u].revision) {
+                /* no revision */
+                submod = &mod->submodules[u];
+                break;
+            } else if (revision && mod->submodules[u].revision && !strcmp(revision, mod->submodules[u].revision)) {
+                /* specific revision */
+                submod = &mod->submodules[u];
+                break;
+            }
+        }
+        if (submod) {
+            break;
+        }
+    }
+
+    return submod;
+}
+
+LIBYANG_API_DEF const struct lysc_submodule *
+ly_ctx_get_submodule3(const struct ly_ctx *ctx, const char *submodule, const char *revision)
+{
+    return _ly_ctx_get_submodule3(ctx, submodule, revision, 0);
+}
+
+LIBYANG_API_DEF const struct lysc_submodule *
+ly_ctx_get_submodule3_latest(const struct ly_ctx *ctx, const char *submodule)
+{
+    return _ly_ctx_get_submodule3(ctx, submodule, NULL, 1);
 }
 
 LIBYANG_API_DEF uint32_t

@@ -11,6 +11,8 @@ BuildRequires:  doxygen
 BuildRequires:  gcc
 BuildRequires:  cmake(cmocka) >= 1.0.1
 BuildRequires:  pkgconfig(libpcre2-8) >= 10.21
+BuildRequires:  libcbor-devel
+BuildRequires:  xxhash-devel
 
 %package modules
 Summary:    YANG modules for libyang
@@ -18,7 +20,6 @@ Summary:    YANG modules for libyang
 %package devel
 Summary:    Development files for libyang
 Requires:   %{name}%{?_isa} = %{version}-%{release}
-Requires:   pcre2-devel
 
 %package devel-doc
 Summary:    Documentation of libyang API

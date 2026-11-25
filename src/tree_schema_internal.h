@@ -305,13 +305,58 @@ LY_ERR lys_check_date(const struct ly_ctx *ctx, const char *date, uint32_t date_
 LY_ERR lysp_check_enum_name(struct lysp_ctx *ctx, const char *name, size_t name_len);
 
 /**
+ * @brief Set the parent of extension instances of a substatement.
+ *
+ * @param[in] EXTS Sized array of extension instances.
+ * @param[in] STMT Substatement of the extension instances to update.
+ * @param[in] PARENT Parent to set.
+ */
+#define LYSP_EXT_PARENTS_UPDATE(EXTS, STMT, PARENT) \
+    { \
+        LYA_COUNT_T v; \
+        LYA_FOR(EXTS, v) { \
+            if ((EXTS)[v].parent_stmt == (STMT)) { \
+                (EXTS)[v].parent = (PARENT); \
+            } \
+        } \
+    }
+
+/**
+ * @brief Set the parent of extension instances of a substatement for all the items of a sized array, which may have
+ * been reallocated.
+ *
+ * LYSP_ARRAY_EXT_PARENTS_UPDATE(ARRAY, EXTS, STMT[, MEMBER])
+ *
+ * @param[in] ARRAY Sized array of statements.
+ * @param[in] EXTS Member of an item with its sized array of extension instances.
+ * @param[in] STMT Substatement of the extension instances to update.
+ * @param[in] MEMBER Optional member of the item to set as the parent, the item itself if not set.
+ */
+#define LYSP_ARRAY_EXT_PARENTS_UPDATE(...) GETMACRO4(__VA_ARGS__, LYSP_ARRAY_EXT_PARENTS_UPDATE4, \
+    LYSP_ARRAY_EXT_PARENTS_UPDATE3, DUMMY)(__VA_ARGS__)
+#define LYSP_ARRAY_EXT_PARENTS_UPDATE3(ARRAY, EXTS, STMT) \
+    { \
+        LYA_COUNT_T u; \
+        LYA_FOR(ARRAY, u) { \
+            LYSP_EXT_PARENTS_UPDATE((ARRAY)[u].EXTS, STMT, &(ARRAY)[u]); \
+        } \
+    }
+#define LYSP_ARRAY_EXT_PARENTS_UPDATE4(ARRAY, EXTS, STMT, MEMBER) \
+    { \
+        LYA_COUNT_T u; \
+        LYA_FOR(ARRAY, u) { \
+            LYSP_EXT_PARENTS_UPDATE((ARRAY)[u].EXTS, STMT, &(ARRAY)[u].MEMBER); \
+        } \
+    }
+
+/**
  * @brief Find source data for a specific module, parse it, and add into the context.
  *
  * @param[in] ctx libyang context.
  * @param[in] name Name of the module to load.
  * @param[in] revision Optional revision of the module to load. If NULL, the newest revision is loaded.
  * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
- * @param[out] mod Created module structure.
+ * @param[out] mod Created module structure if added into context (even on error).
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
@@ -615,7 +660,7 @@ struct lysp_load_module_data {
  * @param[in] format Format of the input data (YANG or YIN).
  * @param[in] mod_data Optional expected module data to check.
  * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
- * @param[out] module Created module.
+ * @param[out] module Created module, always set if a new module was added to context (even on error).
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error, @p new_mods may be modified.
  */

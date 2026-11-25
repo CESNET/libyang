@@ -415,7 +415,7 @@ test_store_lyb(void **state)
 
     /* the pinned member type is kept through validation (no re-resolution to uint32) */
     err = NULL;
-    assert_int_equal(LY_SUCCESS, type->validate_tree(UTEST_LYCTX, lysc_type, NULL, NULL, &value, &err));
+    assert_int_equal(LY_SUCCESS, type->validate_tree(UTEST_LYCTX, lysc_type, NULL, NULL, NULL, &value, &err));
     assert_null(err);
     assert_int_equal(LY_TYPE_STRING, value.subvalue->value.realtype->basetype);
 
@@ -544,7 +544,7 @@ test_store_union_idx(void **state)
 
     /* the pinned member type is kept through validation (no re-resolution to uint32) */
     err = NULL;
-    assert_int_equal(LY_SUCCESS, type->validate_tree(UTEST_LYCTX, lysc_type, NULL, NULL, &value, &err));
+    assert_int_equal(LY_SUCCESS, type->validate_tree(UTEST_LYCTX, lysc_type, NULL, NULL, NULL, &value, &err));
     assert_null(err);
     assert_ptr_equal(type_u->types[1], value.subvalue->value.realtype);
 

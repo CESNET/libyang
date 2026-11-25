@@ -158,12 +158,12 @@ test_data_xml(void **state)
     /* non-existing instances, instance-identifier is here in JSON format because it is already in internal
      * representation without canonical prefixes */
     TEST_ERROR_XML2("<cont xmlns=\"urn:tests:mod\"/>",
-            "defs", "xmlns:m=\"urn:tests:mod\"", "l1", "/m:cont/m:l2", LY_ENOTFOUND);
+            "defs", "xmlns:m=\"urn:tests:mod\"", "l1", "/m:cont/m:l2", LY_EVALID);
     CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/mod:cont/l2\" value - required instance not found.",
             "/defs:l1", 0, "instance-required");
 
     TEST_ERROR_XML2("<llist xmlns=\"urn:tests:defs\">1</llist>",
-            "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:llist[.='2']", LY_ENOTFOUND);
+            "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:llist[.='2']", LY_EVALID);
     CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/defs:llist[.='2']\" value - required instance not found.",
             "/defs:l1", 0, "instance-required");
 
@@ -171,7 +171,7 @@ test_data_xml(void **state)
             "<list2 xmlns=\"urn:tests:defs\"><id>c</id><id2>b</id2></list2>"
             "<llist xmlns=\"urn:tests:defs\">a</llist>"
             "<llist xmlns=\"urn:tests:defs\">b</llist>",
-            "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:list2[a:id='a'][a:id2='a']/a:id", LY_ENOTFOUND);
+            "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:list2[a:id='a'][a:id2='a']/a:id", LY_EVALID);
     CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/defs:list2[id='a'][id2='a']/id\" value - required instance not found.",
             "/defs:l1", 0, "instance-required");
 
@@ -179,12 +179,12 @@ test_data_xml(void **state)
             "<list2 xmlns=\"urn:tests:defs\"><id>c</id><id2>b</id2></list2>"
             "<llist xmlns=\"urn:tests:defs\">1</llist>"
             "<llist xmlns=\"urn:tests:defs\">2</llist>",
-            "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:llist[.='3']", LY_ENOTFOUND);
+            "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:llist[.='3']", LY_EVALID);
     CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/defs:llist[.='3']\" value - required instance not found.",
             "/defs:l1", 0, "instance-required");
 
     TEST_ERROR_XML2("",
-            "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:list-keyless[3]", LY_ENOTFOUND);
+            "defs", "xmlns:a=\"urn:tests:defs\"", "l1", "/a:list-keyless[3]", LY_EVALID);
     CHECK_LOG_CTX_APPTAG("Invalid instance-identifier \"/defs:list-keyless[3]\" value - required instance not found.",
             "/defs:l1", 0, "instance-required");
 
@@ -221,7 +221,7 @@ test_data_xml(void **state)
 
     TEST_ERROR_XML2("",
             "defs", "xmlns:xdf=\"urn:tests:defs\"", "xdf:l2", "/t:llist[6]", LY_EVALID);
-    CHECK_LOG_CTX("Invalid instance-identifier \"/t:llist[6]\" value - semantic error: No module connected with the prefix \"t\" found (prefix format XML prefixes).",
+    CHECK_LOG_CTX("Invalid instance-identifier \"/t:llist[6]\" value - semantic error: Not found module prefix \"t\" in path (prefix format XML prefixes).",
             "/defs:l2", 1);
 
     TEST_ERROR_XML2("<list xmlns=\"urn:tests:defs\"><id>1</id><value>x</value></list>",
@@ -281,12 +281,37 @@ test_plugin_lyb(void **state)
     TEST_SUCCESS_LYB2("lyb2", "nii", "ll[. = 'some_string']");
 }
 
+static void
+test_plugin_dup(void **state)
+{
+    const char *schema, *data;
+    struct lyd_node *tree, *dup;
+
+    /* ietf-netconf-acm node-instance-identifier type with mixed key predicates */
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(UTEST_LYCTX, TESTS_DIR_MODULES_YANG));
+    schema = MODULE_CREATE_YANG("dup",
+            "import ietf-netconf-acm {prefix acm;}"
+            "list lst {key \"k1 k2\"; leaf k1 {type string;} leaf k2 {type string;}}"
+            "leaf-list nii {type acm:node-instance-identifier;}");
+    UTEST_ADD_MODULE(schema, LYS_IN_YANG, NULL, NULL);
+
+    data = "<nii xmlns=\"urn:tests:dup\" xmlns:aa=\"urn:tests:dup\">/aa:lst[aa:k1='a'][aa:k2=$x]</nii>"
+            "<nii xmlns=\"urn:tests:dup\" xmlns:aa=\"urn:tests:dup\">/aa:lst[aa:k1=$x][aa:k2='a']</nii>";
+    CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, LY_SUCCESS, tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_dup_siblings(tree, NULL, 0, &dup));
+    CHECK_LYD(tree, dup);
+    lyd_free_all(dup);
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
         UTEST(test_data_xml),
         UTEST(test_plugin_lyb),
+        UTEST(test_plugin_dup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

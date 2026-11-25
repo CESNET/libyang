@@ -1148,15 +1148,15 @@ cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_
     }
 
     if (first) {
-        key = cbor_print_member_name2(pctx, pctx->parent, node->format, &node->name, 0);
-        LY_CHECK_RET(!key, LY_EMEM);
-
         if (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST)) {
+            /* start new array, the member name is generated once the array is completed */
             cbor_item_t *new_array = cbor_new_indefinite_array();
 
-            LY_CHECK_ERR_RET(!new_array, free(key), LY_EMEM);
-            LY_CHECK_ERR_RET(cbor_print_array_open(pctx, &node->node, new_array),
-                    cbor_decref(&new_array); free(key), LY_EINVAL);
+            LY_CHECK_RET(!new_array, LY_EMEM);
+            LY_CHECK_ERR_RET(cbor_print_array_open(pctx, &node->node, new_array), cbor_decref(&new_array), LY_EINVAL);
+        } else {
+            key = cbor_print_member_name2(pctx, pctx->parent, node->format, &node->name, 0);
+            LY_CHECK_RET(!key, LY_EMEM);
         }
     }
 
@@ -1238,25 +1238,29 @@ cbor_print_opaq(struct cborpr_ctx *pctx, const struct lyd_node_opaq *node, cbor_
     }
 
     if (last && (hints & (LYD_NODEHINT_LIST | LYD_NODEHINT_LEAFLIST))) {
-        if (key) {
-            struct cbor_pair pair = {
-                .key = cbor_move(cbor_build_string(key)),
-                .value = cbor_move(cbor_current_array(pctx))
-            };
+        cbor_item_t *array = cbor_current_array(pctx);
 
-            free(key);
+        key = cbor_print_member_name2(pctx, pctx->parent, node->format, &node->name, 0);
+        if (!key) {
+            cbor_decref(&array);
+            cbor_print_array_close(pctx);
+            return LY_EMEM;
+        }
 
-            if (!cbor_map_add(parent_map, pair)) {
-                cbor_decref(&pair.key);
-                cbor_decref(&pair.value);
-                return LY_EMEM;
-            }
+        /* add completed array to parent map */
+        struct cbor_pair pair = {
+            .key = cbor_move(cbor_build_string(key)),
+            .value = cbor_move(array)
+        };
+
+        free(key);
+
+        if (!cbor_map_add(parent_map, pair)) {
+            cbor_decref(&pair.key);
+            cbor_decref(&pair.value);
+            return LY_EMEM;
         }
         cbor_print_array_close(pctx);
-    }
-
-    if (key) {
-        free(key);
     }
 
     return LY_SUCCESS;

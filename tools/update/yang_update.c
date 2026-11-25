@@ -918,7 +918,7 @@ yu_update_node(const struct lysc_node *snode1, const struct lyd_node *data1, con
     for (i = 0; i < rule_count; ++i) {
         if (node1) {
             /* evaluate compiled data path to check it is selected */
-            ly_path_eval(rule_paths[i], data1, NULL, &match1);
+            ly_path_eval(rule_paths[i], data1, NULL, NULL, &match1);
             if (node1 == match1) {
                 rule = &rules[i];
                 break;

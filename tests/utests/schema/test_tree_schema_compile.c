@@ -1901,7 +1901,7 @@ test_type_leafref(void **state)
     CHECK_LOG_CTX("Too many parent references in path.", "/bb:ref1", 0);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix cc;container a {leaf target2 {type uint8;}}"
             "leaf ref1 {type leafref {path /a:invalid;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("No module connected with the prefix \"a\" found (prefix format schema stored mapping).", "/cc:ref1", 0);
+    CHECK_LOG_CTX("Not found module prefix \"a\" in path (prefix format schema stored mapping).", "/cc:ref1", 0);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {namespace urn:dd;prefix dd;leaf target1 {type string;}"
             "container a {leaf target2 {type uint8;}} leaf ref1 {type leafref {"
             "path '/a[target2 = current()/../target1]/target2';}}}", LYS_IN_YANG, &mod));
@@ -1958,7 +1958,7 @@ test_type_leafref(void **state)
             "leaf ifname{type leafref{ path \"../interface/name\";}}"
             "leaf address {type leafref{ path \"/interface[x:name=current()/../ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("No module connected with the prefix \"x\" found (prefix format schema stored mapping).", "/pp:address", 0);
+    CHECK_LOG_CTX("Not found module prefix \"x\" in path (prefix format schema stored mapping).", "/pp:address", 0);
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module qq {namespace urn:qq;prefix qq;"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
@@ -2028,7 +2028,7 @@ test_type_leafref(void **state)
             "leaf ifname{type leafref{ path \"../interface/name\";}}\n"
             "leaf address {type leafref{ path \"/interface[name=current()/../x:ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("No module connected with the prefix \"x\" found (prefix format schema stored mapping).", "/yy:address", 0);
+    CHECK_LOG_CTX("Not found module prefix \"x\" in path (prefix format schema stored mapping).", "/yy:address", 0);
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module zz {namespace urn:zz;prefix zz;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
@@ -2535,7 +2535,6 @@ test_type_exts(void **state)
 static void
 test_status(void **state)
 {
-
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;"
             "container c {status deprecated; leaf l {status current; type string;}}}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Status \"current\" of \"l\" is in conflict with \"deprecated\" status of parent \"c\".", "/aa:c/l", 0);
@@ -2549,10 +2548,15 @@ test_status(void **state)
     CHECK_LOG_CTX("Status \"deprecated\" of \"l\" is in conflict with \"obsolete\" status of parent \"c\".", "/cc:c/l", 0);
 
     /* just a warning */
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:dd;prefix d;"
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module cc {namespace urn:cc;prefix d;"
             "container c {leaf l {status obsolete; type string;}}"
             "container d {leaf m {when \"../../c/l\"; type string;}}}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("When condition \"../../c/l\" may be referencing deprecated node \"l\".", NULL, 0);
+    CHECK_LOG_CTX("When condition \"../../c/l\" is referencing an obsoleted node \"l\".", NULL, 0);
+
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module dd {yang-version 1.1; namespace urn:dd;prefix d;"
+            "container c {leaf l {status obsolete; type uint8;} leaf m {type uint8; must \"../d:l = 1\";}}}",
+            LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("Must condition \"../d:l = 1\" is referencing an obsoleted node \"l\".", NULL, 0);
 }
 
 static void
@@ -3947,6 +3951,40 @@ test_when(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
             "module a {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:example:a\";\n"
+            "  prefix a;\n"
+            "\n"
+            "  identity base;\n"
+            "  identity one {\n"
+            "    base base;\n"
+            "  }\n"
+            "\n"
+            "  leaf e {\n"
+            "    when \"enum-value(.) = 1\";\n"
+            "    type enumeration {\n"
+            "      enum x;\n"
+            "      enum y;\n"
+            "    }\n"
+            "  }\n"
+            "  leaf i {\n"
+            "    when \"derived-from-or-self(., 'a:one')\";\n"
+            "    type identityref {\n"
+            "      base base;\n"
+            "    }\n"
+            "  }\n"
+            "  leaf b {\n"
+            "    when \"bit-is-set(., 'f')\";\n"
+            "    type bits {\n"
+            "      bit f;\n"
+            "    }\n"
+            "  }\n"
+            "}\n",
+            LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("When condition is accessing its own conditional node value.", "/a:b", 0);
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
+            "module a {\n"
             "    namespace urn:a;\n"
             "    prefix a;\n"
             "    augment /cont {\n"
@@ -3961,6 +3999,66 @@ test_when(void **state)
             "}",
             LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("When condition is accessing its own conditional node children.", "/a:cont/aug-cont", 0);
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
+            "module a {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:a\";\n"
+            "  prefix a;\n"
+            "\n"
+            "  container c {\n"
+            "    presence \"test\";\n"
+            "    choice ch {\n"
+            "      default s;\n"
+            "      case s {\n"
+            "        when \"boolean(deref(v))\";\n"
+            "        leaf d {\n"
+            "          type uint8;\n"
+            "          default 3;\n"
+            "        }\n"
+            "      }\n"
+            "    }\n"
+            "    leaf v {\n"
+            "      type leafref {\n"
+            "        path \"../d\";\n"
+            "      }\n"
+            "    }\n"
+            "  }\n"
+            "}",
+            LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("When condition cyclic dependency on the node \"d\".", "/a:c/ch/s", 0);
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX,
+            "module a {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:a\";\n"
+            "  prefix a;\n"
+            "\n"
+            "  grouping g {\n"
+            "    leaf d {\n"
+            "      type uint8;\n"
+            "      default 3;\n"
+            "    }\n"
+            "  }\n"
+            "\n"
+            "  container c {\n"
+            "    presence \"test\";\n"
+            "    uses g {\n"
+            "      when \"string(v) = '3'\";\n"
+            "    }\n"
+            "    leaf v {\n"
+            "      type union {\n"
+            "        type leafref {\n"
+            "          path \"../d\";\n"
+            "        }\n"
+            "        type string;\n"
+            "      }\n"
+            "      default \"03\";\n"
+            "    }\n"
+            "  }\n"
+            "}",
+            LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("When condition cyclic dependency on the node \"d\".", "/a:c/d", 0);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX,
             "module b {\n"

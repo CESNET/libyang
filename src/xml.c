@@ -465,7 +465,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, uint32_t
     uint32_t offset;   /* read offset in input buffer */
     uint32_t len;      /* length of the output string (write offset in output buffer) */
     uint32_t size = 0; /* size of the output buffer */
-    uint32_t n, u;
+    uint32_t n, u, c, parsed;
     ly_bool ws = 1;
 
     assert(xmlctx);
@@ -516,10 +516,20 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, uint32_t
                 ADD_CHECK_OVERFLOW(offset, 1, error);
                 if (isdigit(in[offset])) {
                     for (n = 0; isdigit(in[offset]); offset++) {
+                        if (n > 0x10ffff) {
+                            /* too large, would overflow */
+                            LOGVAL(ctx, NULL, LYVE_SYNTAX, "Invalid character reference \"%.12s\".", p);
+                            goto error;
+                        }
                         n = (LY_BASE_DEC * n) + (in[offset] - '0');
                     }
                 } else if ((in[offset] == 'x') && isxdigit(in[offset + 1])) {
                     for (n = 0, ++offset; isxdigit(in[offset]); offset++) {
+                        if (n > 0x10ffff) {
+                            /* too large, would overflow */
+                            LOGVAL(ctx, NULL, LYVE_SYNTAX, "Invalid character reference \"%.12s\".", p);
+                            goto error;
+                        }
                         if (isdigit(in[offset])) {
                             u = (in[offset] - '0');
                         } else if (in[offset] > 'F') {
@@ -564,8 +574,10 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, uint32_t
             in += ly_strlen_const("<![CDATA[");
             assert(!offset);
 
-            /* analyze CDATA for non WS and newline chars */
-            for (n = 0; n < u; ++n) {
+            /* check the CDATA characters and analyze them for non WS and newline chars */
+            for (n = 0; n < u; n += parsed) {
+                in_aux = &in[n];
+                LY_CHECK_ERR_GOTO(ly_getutf8(&in_aux, &c, &parsed), LOGVAL(ctx, NULL, LY_VCODE_INCHAR, in[n]), error);
                 if (in[n] == '\n') {
                     LY_IN_NEW_LINE(xmlctx->in);
                 } else if (!is_xmlws(in[n])) {

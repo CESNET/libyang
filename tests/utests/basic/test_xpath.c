@@ -1,9 +1,9 @@
 /**
  * @file test_xpath.c
- * @author: Michal Vasko <mvasko@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for XPath evaluation
  *
- * Copyright (c) 2020 CESNET, z.s.p.o.
+ * Copyright (c) 2020 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -410,7 +410,7 @@ test_rpc(void **state)
             "    <l>val</l>\n"
             "</r>";
     struct ly_in *in;
-    struct lyd_node *tree;
+    struct lyd_node *tree = NULL;
     struct ly_set *set;
 
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(data, &in));
@@ -1326,6 +1326,57 @@ test_number(void **state)
     lyd_free_siblings(tree);
 }
 
+static void
+test_no_value(void **state)
+{
+    const char *schema_c =
+            "module c {\n"
+            "    namespace urn:tests:c;\n"
+            "    prefix c;\n"
+            "    yang-version 1.1;\n"
+            "\n"
+            "    identity base;\n"
+            "    identity one {\n"
+            "        base base;\n"
+            "    }\n"
+            "\n"
+            "    leaf t {\n"
+            "        type string;\n"
+            "    }\n"
+            "    container ci {\n"
+            "        presence \"test\";\n"
+            "        leaf v {\n"
+            "            when \"not(derived-from-or-self(., 'c:one'))\";\n"
+            "            type identityref {\n"
+            "                base base;\n"
+            "            }\n"
+            "            mandatory true;\n"
+            "        }\n"
+            "    }\n"
+            "}";
+    struct lyd_node *tree;
+    ly_bool r;
+
+    assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, schema_c, LYS_IN_YANG, NULL));
+    CHECK_LOG_CTX("When condition is accessing its own conditional node value.", "/c:ci/v", 0);
+
+    /* the root node has no value either */
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(UTEST_LYCTX, "<foo xmlns=\"urn:tests:a\">val</foo>", LYD_XML,
+            LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_eval_xpath(tree, "string(enum-value(/)) = 'NaN'", &r));
+    assert_int_equal(r, 1);
+
+    assert_int_equal(LY_SUCCESS, lyd_eval_xpath(tree, "bit-is-set(/, 'f')", &r));
+    assert_int_equal(r, 0);
+
+    assert_int_equal(LY_SUCCESS, lyd_eval_xpath(tree, "deref(/)", &r));
+    assert_int_equal(r, 0);
+
+    lyd_free_all(tree);
+}
+
 int
 main(void)
 {
@@ -1346,6 +1397,7 @@ main(void)
         UTEST(test_mod, setup),
         UTEST(test_anydata, setup),
         UTEST(test_number, setup),
+        UTEST(test_no_value, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

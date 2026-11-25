@@ -372,8 +372,8 @@ LY_ERR lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, st
  * @param[in,out] first First sibling.
  * @param[in] sparent Schema parent of the siblings, NULL if schema of @p parent can be used.
  * @param[in] mod Module of the default values, NULL for nested siblings.
- * @param[in] node_when Optional set to add nodes with "when" conditions into.
- * @param[in] node_types Optional set to add nodes with unresolved types into.
+ * @param[in] node_when Optional HT to add nodes with "when" conditions into.
+ * @param[in] node_types Optional HT to add nodes with unresolved types into.
  * @param[in] ext_val Optional set to add nodes with extension instances into.
  * @param[in] impl_opts Implicit options (@ref implicitoptions).
  * @param[in,out] getnext_ht Getnext HT to use, new @p sparent is added to it.
@@ -381,7 +381,7 @@ LY_ERR lyd_new_path_create(struct lyd_node *parent, const struct ly_ctx *ctx, st
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *ext_val,
+        const struct lys_module *mod, struct ly_ht *node_when, struct ly_ht *node_types, struct ly_set *ext_val,
         uint32_t impl_opts, struct ly_ht *getnext_ht, struct lyd_node **diff);
 
 /**
@@ -391,8 +391,8 @@ LY_ERR lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const 
  * @param[in,out] first First sibling.
  * @param[in] sparent Schema parent of the siblings, NULL if schema of @p parent can be used.
  * @param[in] mod Module of the default values, NULL for nested siblings.
- * @param[in] node_when Optional set to add nodes with "when" conditions into.
- * @param[in] node_types Optional set to add nodes with unresolved types into.
+ * @param[in] node_when Optional HT to add nodes with "when" conditions into.
+ * @param[in] node_types Optional HT to add nodes with unresolved types into.
  * @param[in] ext_val Optional set to add nodes with extension instances into.
  * @param[in] impl_opts Implicit options (@ref implicitoptions).
  * @param[in,out] getnext_ht Getnext HT to use, new @p sparent is added to it.
@@ -400,7 +400,7 @@ LY_ERR lyd_new_implicit(struct lyd_node *parent, struct lyd_node **first, const 
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-        const struct lys_module *mod, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *ext_val,
+        const struct lys_module *mod, struct ly_ht *node_when, struct ly_ht *node_types, struct ly_set *ext_val,
         uint32_t impl_opts, struct ly_ht *getnext_ht, struct lyd_node **diff);
 
 /**
@@ -626,11 +626,13 @@ LY_ERR lyd_value_store(const struct ly_ctx *ctx, const struct lyd_node *lnode, s
  * @param[in,out] val Stored value to resolve.
  * @param[in] ctx_node Context node for the resolution.
  * @param[in] tree Data tree for the resolution.
+ * @param[in] val_unres Val unres structure with unresolved nodes in @p tree, may be NULL.
  * @return LY_SUCCESS on success,
+ * @return LY_EINCOMPLETE in case a node was found in @p val_unres;
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_value_validate_incomplete(const struct ly_ctx *ctx, const struct lysc_type *type, struct lyd_value *val,
-        const struct lyd_node *ctx_node, const struct lyd_node *tree);
+        const struct lyd_node *ctx_node, const struct lyd_node *tree, const struct lyd_val_unres *val_unres);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
@@ -664,19 +666,20 @@ LY_ERR ly_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node,
  * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] hints Value hints, bitmap of LYD_VALHINT_* values.
  * @param[in] ctx_node Optional data tree context node for the value (leafref target, instance-identifier).
- * If not set and is required for the validation to complete, ::LY_EINCOMPLETE is be returned.
+ * @param[in] tree Optional data tree for the value, if not set and required, ::LY_EINCOMPLETE is be returned.
+ * @param[in] val_unres Val unres structure with unresolved nodes in @p tree, may be NULL.
  * @param[in] ctx_scnode Optinal schema context node, for logging.
  * @param[in] log Whether to log errors or not.
  * @param[out] realtype Optional real type of @p value.
  * @param[out] canonical Optional canonical value of @p value (in the dictionary).
- * @return LY_SUCCESS on success
- * @return LY_EINCOMPLETE in case the @p ctx_node is not provided and it was needed to finish the validation
- * (e.g. due to require-instance).
+ * @return LY_SUCCESS on success;
+ * @return LY_EINCOMPLETE in case the @p tree is not provided and required or a required node was found in @p val_unres;
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_validate3(const struct ly_ctx *ctx, const struct lysc_type *type, const char *value, size_t value_len,
         LY_VALUE_FORMAT format, void *prefix_data, uint32_t hints, const struct lyd_node *ctx_node,
-        const struct lysc_node *ctx_scnode, int log, const struct lysc_type **realtype, const char **canonical);
+        const struct lyd_node *tree, const struct lyd_val_unres *val_unres, const struct lysc_node *ctx_scnode, int log,
+        const struct lysc_type **realtype, const char **canonical);
 
 /**
  * @defgroup datahash Data nodes hash manipulation

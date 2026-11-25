@@ -38,7 +38,7 @@ lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, u
     case LYD_LYB:
         ret = lyb_print_data(out, root, options);
         break;
-#ifdef ENABLE_CBOR_SUPPORT
+#ifdef LY_HAVE_CBOR
     case LYD_CBOR:
         ret = cbor_print_data(out, root, options);
         break;
@@ -47,7 +47,7 @@ lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, u
         LOGERR(root ? LYD_CTX(root) : NULL, LY_ENOT, "CBOR format not supported, libcbor not found.");
         ret = LY_ENOT;
         break;
-#endif /* ENABLE_CBOR_SUPPORT */
+#endif /* LY_HAVE_CBOR */
     case LYD_UNKNOWN:
         LOGERR(root ? LYD_CTX(root) : NULL, LY_EINVAL, "Unknown data output format.");
         ret = LY_EINVAL;
@@ -60,7 +60,7 @@ lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, u
 LIBYANG_API_DEF LY_ERR
 lyd_print_all(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
 {
-    LY_CHECK_ARG_RET(NULL, out, !(options & LYD_PRINT_SIBLINGS), LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, out, LY_EINVAL);
 
     /* reset the number of printed bytes */
     out->func_printed = 0;
@@ -84,7 +84,7 @@ lyd_print_all(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format
 LIBYANG_API_DEF LY_ERR
 lyd_print_tree(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
 {
-    LY_CHECK_ARG_RET(NULL, out, !(options & LYD_PRINT_SIBLINGS), LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, out, LY_EINVAL);
 
     /* reset the number of printed bytes */
     out->func_printed = 0;

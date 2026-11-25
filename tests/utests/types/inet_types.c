@@ -134,6 +134,16 @@ test_data_xml(void **state)
     TEST_SUCCESS_XML("a", "l6", "0.1.58.4/32", STRING, "0.1.58.4/32");
     TEST_SUCCESS_XML("a", "l6", "12.1.58.4/8", STRING, "12.0.0.0/8");
 
+    /* store-only skips the pattern, so a 3-digit prefix reaches the printer */
+    {
+        struct lyd_node *tree;
+        const char *data = "<l6 xmlns=\"urn:tests:a\">255.255.255.255/255</l6>";
+
+        CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_STORE_ONLY, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
+        CHECK_LYD_STRING_PARAM(tree, "<l6 xmlns=\"urn:tests:a\">255.255.255.255/255</l6>\n", LYD_XML, 0);
+        lyd_free_all(tree);
+    }
+
     /* ipv6-prefix */
     TEST_SUCCESS_XML("a", "l7", "::C:D:E:f:a/112", STRING, "::c:d:e:f:0/112");
     TEST_SUCCESS_XML("a", "l7", "::C:D:E:f:a/110", STRING, "::c:d:e:c:0/110");

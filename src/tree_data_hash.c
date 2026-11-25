@@ -83,11 +83,6 @@ lyd_hash(struct lyd_node *node)
     return LY_SUCCESS;
 }
 
-/**
- * @brief Compare callback for values in hash table.
- *
- * Implementation of ::lyht_value_equal_cb.
- */
 ly_bool
 lyd_hash_table_val_equal(void *val1_p, void *val2_p, ly_bool mod, void *UNUSED(cb_data))
 {

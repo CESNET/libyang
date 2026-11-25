@@ -310,31 +310,21 @@ test_parse_instance_predicate(void **state)
  * @param token The input token to translate.
  * @param tok_len The length of the input token.
  * @param is_nametest Whether the token is a name test.
- * @param mod The YANG module.
+ * @param mod Module to use.
  * @param expected_ret The expected return value.
  * @param expected_out The expected output token.
  */
 static void
-assert_token_translation(const char *token, uint16_t tok_len, ly_bool is_nametest,
-        struct lys_module *mod, LY_ERR expected_ret)
+assert_token_translation(const char *token, uint16_t tok_len, ly_bool is_nametest, const struct lys_module *mod,
+        LY_ERR expected_ret)
 {
+    LY_ERR r;
     char *out_token = NULL;
-    const struct lys_module *context_mod = mod;
+    const struct lysc_node *ctx_node = NULL;
 
-    LY_ERR ret = lyplg_type_xpath10_print_token(
-            token,
-            tok_len,
-            is_nametest,
-            &context_mod,
-            mod->ctx,
-            LY_VALUE_SCHEMA,
-            mod->parsed,
-            LY_VALUE_JSON,
-            NULL,
-            &out_token,
-            NULL);
-
-    assert_int_equal(expected_ret, ret);
+    r = lyplg_type_xpath10_print_token(token, tok_len, is_nametest, mod->ctx, LY_VALUE_SCHEMA, mod->parsed,
+            LY_VALUE_JSON, NULL, &mod, &ctx_node, &out_token, NULL);
+    assert_int_equal(expected_ret, r);
     free(out_token);
 }
 
@@ -347,6 +337,8 @@ test_value_prefix_next(void **state)
             "module test {"
             "  namespace \"urn:test\";"
             "  prefix pref;"
+            ""
+            "  leaf node {type string;}"
             "}";
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, yang, LYS_IN_YANG, &mod));
@@ -356,9 +348,6 @@ test_value_prefix_next(void **state)
 
     /* Valid prefix with node (Prefix translation) */
     assert_token_translation("pref:node", 9, 1, mod, LY_SUCCESS);
-
-    /* Valid prefix only (Nametest ending in colon) */
-    assert_token_translation("pref:", 5, 1, mod, LY_SUCCESS);
 
     /* No prefix (Standard node) */
     assert_token_translation("node", 4, 1, mod, LY_SUCCESS);

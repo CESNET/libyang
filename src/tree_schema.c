@@ -545,7 +545,10 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, co
         const char *prefix, uint32_t prefix_len, LY_VALUE_FORMAT format, void *prefix_data, const char *name,
         uint32_t name_len, uint32_t options, const struct lysc_node **snode, struct lysc_ext_instance **ext)
 {
-    const struct lysc_node *node = NULL;
+    LY_ERR rc = LY_SUCCESS;
+    const struct lysc_node *node;
+    const struct lys_module *cur_mod;
+    uint32_t idx = 0;
 
     assert(name);
 
@@ -562,7 +565,7 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, co
     }
 
     /* find the module */
-    if (!mod) {
+    if (prefix || !mod) {
         mod = lys_find_module(ctx, parent, prefix, prefix_len, format, prefix_data);
     }
 
@@ -574,6 +577,7 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, co
             return LY_EINVAL;
         }
 
+        node = NULL;
         while ((node = lys_getnext(node, parent, mod->compiled, options))) {
             /* check module */
             if (node->module != mod) {
@@ -589,8 +593,34 @@ lys_find_child_node(const struct ly_ctx *ctx, const struct lysc_node *parent, co
     }
 
     /* look for an ext instance node */
-    return lys_find_child_node_ext(ctx, mod, NULL, parent, prefix, prefix_len, format, prefix_data, name, name_len,
+    rc = lys_find_child_node_ext(ctx, mod, NULL, parent, prefix, prefix_len, format, prefix_data, name, name_len,
             0, snode, ext);
+
+    if ((rc == LY_ENOT) && !parent && mod) {
+        /* it may still be a foreign top-level choice augment */
+        while ((cur_mod = ly_ctx_get_module_iter(ctx, &idx))) {
+            if (!cur_mod->implemented) {
+                continue;
+            }
+
+            /* get next node */
+            node = NULL;
+            while ((node = lys_getnext(node, NULL, cur_mod->compiled, 0))) {
+                /* check module */
+                if (node->module != mod) {
+                    continue;
+                }
+
+                /* check name */
+                if (!ly_strncmp(node->name, name, name_len)) {
+                    *snode = node;
+                    return LY_SUCCESS;
+                }
+            }
+        }
+    }
+
+    return rc;
 }
 
 LIBYANG_API_DEF const struct lysc_node *
@@ -970,7 +1000,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
         path = NULL;
     } else if (len == 0) {
         if (buffer) {
-            strcpy(buffer, "/");
+            snprintf(buffer, buflen, "/");
         } else {
             free(path);
             path = strdup("/");
@@ -1356,7 +1386,23 @@ static void
 lys_unres_glob_revert_erase_mod(struct ly_ctx *ctx, struct lys_glob_unres *unres, struct lys_module *mod)
 {
     uint32_t idx, i, j;
+    LYA_COUNT_T u;
     struct ly_set *dep_set;
+    struct lys_module *imp_mod;
+
+    if (!mod) {
+        return;
+    }
+
+    /* check for any imports that failed to be parsed properly */
+    LYA_FOR(mod->parsed->imports, u) {
+        imp_mod = mod->parsed->imports[u].module;
+        if (imp_mod && imp_mod->parsed->parsing) {
+            /* free the module */
+            lys_unres_glob_revert_erase_mod(ctx, unres, imp_mod);
+            mod->parsed->imports[u].module = NULL;
+        }
+    }
 
     if (ly_set_contains(&unres->implementing, mod, &i)) {
         /* make the module correctly non-implemented again */
@@ -3010,7 +3056,7 @@ cleanup:
         lysp_yin_ctx_free(yinctx);
     }
 
-    if (!rc && !mod_exists && module) {
+    if (module && ((!rc && !mod_exists) || mod_created)) {
         *module = mod;
     }
     return rc;
@@ -3198,9 +3244,9 @@ lys_search_localfile_file_type(const struct dirent *file, const char *wd, struct
         }
     }
 
-    if (is_dir && (dirs->count || !implicit_cwd)) {
+    if (is_dir && !implicit_cwd) {
         /* we have another subdirectory in searchpath to explore,
-         * subdirectories are not taken into account in current working dir (dirs->set.g[0]) */
+         * subdirectories are not taken into account in current working dir */
         if (!str && (asprintf(&str, "%s/%s", wd, file->d_name) == -1)) {
             LOGMEM(NULL);
             rc = LY_EMEM;
@@ -3391,7 +3437,7 @@ _lys_search_localfile(const struct ly_ctx *ctx, const char * const *searchpaths,
 {
     LY_ERR rc = LY_SUCCESS;
     int match = 0, m;
-    size_t name_len, flen;
+    uint32_t i, name_len, flen;
     ly_bool skip;
     const char *wd;
     DIR *dir = NULL;
@@ -3400,7 +3446,6 @@ _lys_search_localfile(const struct ly_ctx *ctx, const char * const *searchpaths,
     LYS_INFORMAT format_aux, match_format = 0;
     struct lys_ext_instance_semver *match_ver = NULL;
     struct ly_set *dirs = NULL;
-    uint32_t i;
 
     /* collect all the dirs to search */
     LY_CHECK_GOTO(rc = lys_search_localfile_collect_dirs(ctx, searchpaths, &cwd, &dirs), cleanup);
@@ -3418,6 +3463,11 @@ _lys_search_localfile(const struct ly_ctx *ctx, const char * const *searchpaths,
         if (!dir) {
             LOGWRN(NULL, "Unable to open directory \"%s\" for searching (sub)modules (%s).", wd, strerror(errno));
             continue;
+        }
+
+        if (i) {
+            /* the first directory is CWD (if any) that is not searched recursively */
+            cwd = 0;
         }
 
         /* search the directory */

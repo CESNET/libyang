@@ -182,15 +182,13 @@ LIBYANG_API_DEF void
 lyht_free(struct ly_ht *ht, void (*val_free)(void *val_p))
 {
     struct ly_ht_rec *rec;
-    uint32_t hlist_idx;
-    uint32_t rec_idx;
 
     if (!ht) {
         return;
     }
 
     if (val_free) {
-        LYHT_ITER_ALL_RECS(ht, hlist_idx, rec_idx, rec) {
+        LYHT_ITER_ALL_RECS(ht, rec) {
             val_free(&rec->val);
         }
     }
@@ -479,7 +477,6 @@ lyht_remove_with_resize_cb(struct ly_ht *ht, void *val_p, uint32_t hash, lyht_va
     uint32_t rec_idx;
 
     if (lyht_find_rec(ht, val_p, hash, 1, ht->val_equal, NULL, &found_rec)) {
-        LOGARG(NULL, hash);
         return LY_ENOTFOUND;
     }
 
@@ -550,4 +547,92 @@ lyht_get_fixed_size(uint32_t item_count)
     item_count |= item_count >> 16;
 
     return item_count + 1;
+}
+
+struct ly_ht_rec *
+lyht_get_rec_next_safe(struct ly_ht *ht, uint32_t hlist_idx, struct ly_ht_rec ***hlist_recs, uint32_t *idx)
+{
+    struct ly_ht_rec *rec = NULL, *rec_i;
+    uint32_t cur_rec_count, rec_idx, i;
+
+    if (*idx && (!*hlist_recs || (*idx == LYA_COUNT(*hlist_recs)))) {
+        /* last call */
+        LYA_FREE(*hlist_recs);
+        *hlist_recs = NULL;
+        *idx = 0;
+        return NULL;
+    }
+
+    if (!*idx) {
+        /* first call */
+        assert(!*hlist_recs);
+        cur_rec_count = 0;
+        LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec_i) {
+            /* count collision records of this hlist */
+            ++cur_rec_count;
+        }
+
+        if (cur_rec_count == 0) {
+            /* no records */
+            return NULL;
+        } else if (cur_rec_count == 1) {
+            /* single record */
+            ++(*idx);
+            return lyht_get_rec(ht->recs, ht->rec_size, ht->hlists[hlist_idx].first);
+        }
+
+        /* collect all current records */
+        i = 0;
+        LYA_PREALLOC(*hlist_recs, cur_rec_count, LOGMEM(NULL); return NULL);
+        LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec_i) {
+            (*hlist_recs)[i++] = rec_i;
+            LYA_INCREMENT(*hlist_recs);
+        }
+
+        /* return first record */
+        rec = (*hlist_recs)[*idx];
+        ++(*idx);
+        return rec;
+    }
+
+    i = 0;
+    LYHT_ITER_HLIST_RECS(ht, hlist_idx, rec_idx, rec_i) {
+        if (i < *idx) {
+            /* checking previously returned records */
+            while ((i < *idx) && (rec_i != (*hlist_recs)[i])) {
+                ++i;
+            }
+
+            if (i < *idx) {
+                /* next record found */
+                ++i;
+                continue;
+            }
+        }
+
+        if (i == *idx) {
+            /* find the next record that has not been removed */
+            while (rec_i != (*hlist_recs)[*idx]) {
+                /* record removed */
+                ++(*idx);
+
+                /* there is next record rec_i to return and it must be in our cache if items were not added */
+                assert(*idx < LYA_COUNT(*hlist_recs));
+            }
+            break;
+        }
+    }
+
+    if (rec_i != (*hlist_recs)[*idx]) {
+        /* all the following records were removed */
+        LYA_FREE(*hlist_recs);
+        *hlist_recs = NULL;
+        *idx = 0;
+        return NULL;
+    }
+
+    /* return next record */
+    rec = rec_i;
+    ++(*idx);
+    return rec;
 }

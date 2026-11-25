@@ -96,6 +96,35 @@
             ]
           },
           {
+            "parent-path": "/{grp=top-grp}",
+            "identifier": "gleaf2",
+            "stmt-type": "leaf",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ],
+            "new": {
+              "type": {
+                "name": "empty"
+              }
+            }
+          },
+          {
+            "parent-path": "/{grp=top-grp2}",
+            "identifier": "cont",
+            "stmt-type": "container",
+            "changed": [
+              {
+                "stmt": "node",
+                "change": "added",
+                "conformance": "backwards-compatible"
+              }
+            ]
+          },
+          {
             "parent-path": "/",
             "identifier": "type1",
             "stmt-type": "typedef",

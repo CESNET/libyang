@@ -2234,6 +2234,234 @@ test_obsolete(void **state)
     ly_ctx_destroy(ctx);
 }
 
+static void
+check_ext_parents(const struct lysp_module *pmod)
+{
+    const struct lysp_node_leaf *leaf;
+    const struct lysp_node_leaflist *llist;
+    const struct lysp_tpdf *tpdf;
+    const struct lysp_type_enum *en;
+    const struct lysp_restr *must;
+    LYA_COUNT_T u, v;
+
+    assert_int_equal(3, LYA_COUNT(pmod->typedefs));
+    LYA_FOR(pmod->typedefs, u) {
+        tpdf = &pmod->typedefs[u];
+        assert_int_equal(2, LYA_COUNT(tpdf->exts));
+        LYA_FOR(tpdf->exts, v) {
+            if (tpdf->exts[v].parent_stmt == LY_STMT_TYPEDEF) {
+                assert_ptr_equal(tpdf, tpdf->exts[v].parent);
+            } else {
+                assert_int_equal(LY_STMT_DEFAULT, tpdf->exts[v].parent_stmt);
+                assert_ptr_equal(&tpdf->dflt, tpdf->exts[v].parent);
+            }
+        }
+    }
+
+    leaf = (const struct lysp_node_leaf *)pmod->data;
+    assert_int_equal(3, LYA_COUNT(leaf->type.enums));
+    LYA_FOR(leaf->type.enums, u) {
+        en = &leaf->type.enums[u];
+        assert_int_equal(2, LYA_COUNT(en->exts));
+        LYA_FOR(en->exts, v) {
+            if (en->exts[v].parent_stmt == LY_STMT_ENUM) {
+                assert_ptr_equal(en, en->exts[v].parent);
+            } else {
+                assert_int_equal(LY_STMT_STATUS, en->exts[v].parent_stmt);
+                assert_ptr_equal(&en->flags, en->exts[v].parent);
+            }
+        }
+    }
+
+    assert_int_equal(3, LYA_COUNT(leaf->musts));
+    LYA_FOR(leaf->musts, u) {
+        must = &leaf->musts[u];
+        assert_int_equal(1, LYA_COUNT(must->exts));
+        assert_ptr_equal(must, must->exts[0].parent);
+    }
+
+    assert_int_equal(3, LYA_COUNT(leaf->iffeatures));
+    assert_int_equal(3, LYA_COUNT(leaf->exts));
+    LYA_FOR(leaf->exts, u) {
+        assert_int_equal(LY_STMT_IF_FEATURE, leaf->exts[u].parent_stmt);
+        assert_ptr_equal(leaf->iffeatures, leaf->exts[u].parent);
+        assert_int_equal(u, leaf->exts[u].parent_stmt_index);
+    }
+
+    llist = (const struct lysp_node_leaflist *)leaf->next;
+    assert_int_equal(3, LYA_COUNT(llist->dflts));
+    assert_int_equal(3, LYA_COUNT(llist->exts));
+    LYA_FOR(llist->exts, u) {
+        assert_int_equal(LY_STMT_DEFAULT, llist->exts[u].parent_stmt);
+        assert_ptr_equal(llist->dflts, llist->exts[u].parent);
+        assert_int_equal(u, llist->exts[u].parent_stmt_index);
+    }
+}
+
+static void
+test_ext_parent_array_realloc(void **state)
+{
+    const char *yang, *yin;
+    struct lys_module *mod;
+
+    yang = "module ep-yang {\n"
+            "  yang-version 1.1;\n"
+            "  namespace urn:ep-yang;\n"
+            "  prefix ep;\n"
+            "  extension e;\n"
+            "  feature f1;\n"
+            "  feature f2;\n"
+            "  feature f3;\n"
+            "  typedef t1 { type string; default a { ep:e; } ep:e; }\n"
+            "  typedef t2 { type string; default b { ep:e; } ep:e; }\n"
+            "  typedef t3 { type string; default c { ep:e; } ep:e; }\n"
+            "  leaf l {\n"
+            "    if-feature f1 { ep:e; }\n"
+            "    if-feature f2 { ep:e; }\n"
+            "    if-feature f3 { ep:e; }\n"
+            "    must \"1\" { ep:e; }\n"
+            "    must \"2\" { ep:e; }\n"
+            "    must \"3\" { ep:e; }\n"
+            "    type enumeration {\n"
+            "      enum a { status current { ep:e; } ep:e; }\n"
+            "      enum b { status current { ep:e; } ep:e; }\n"
+            "      enum c { status current { ep:e; } ep:e; }\n"
+            "    }\n"
+            "  }\n"
+            "  leaf-list ll {\n"
+            "    type string;\n"
+            "    default a { ep:e; }\n"
+            "    default b { ep:e; }\n"
+            "    default c { ep:e; }\n"
+            "  }\n"
+            "}\n";
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, &mod);
+    check_ext_parents(mod->parsed);
+
+    yin = "<module name=\"ep-yin\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:ep=\"urn:ep-yin\">\n"
+            "  <yang-version value=\"1.1\"/>\n"
+            "  <namespace uri=\"urn:ep-yin\"/>\n"
+            "  <prefix value=\"ep\"/>\n"
+            "  <extension name=\"e\"/>\n"
+            "  <feature name=\"f1\"/>\n"
+            "  <feature name=\"f2\"/>\n"
+            "  <feature name=\"f3\"/>\n"
+            "  <typedef name=\"t1\"><type name=\"string\"/><default value=\"a\"><ep:e/></default><ep:e/></typedef>\n"
+            "  <typedef name=\"t2\"><type name=\"string\"/><default value=\"b\"><ep:e/></default><ep:e/></typedef>\n"
+            "  <typedef name=\"t3\"><type name=\"string\"/><default value=\"c\"><ep:e/></default><ep:e/></typedef>\n"
+            "  <leaf name=\"l\">\n"
+            "    <if-feature name=\"f1\"><ep:e/></if-feature>\n"
+            "    <if-feature name=\"f2\"><ep:e/></if-feature>\n"
+            "    <if-feature name=\"f3\"><ep:e/></if-feature>\n"
+            "    <must condition=\"1\"><ep:e/></must>\n"
+            "    <must condition=\"2\"><ep:e/></must>\n"
+            "    <must condition=\"3\"><ep:e/></must>\n"
+            "    <type name=\"enumeration\">\n"
+            "      <enum name=\"a\"><status value=\"current\"><ep:e/></status><ep:e/></enum>\n"
+            "      <enum name=\"b\"><status value=\"current\"><ep:e/></status><ep:e/></enum>\n"
+            "      <enum name=\"c\"><status value=\"current\"><ep:e/></status><ep:e/></enum>\n"
+            "    </type>\n"
+            "  </leaf>\n"
+            "  <leaf-list name=\"ll\">\n"
+            "    <type name=\"string\"/>\n"
+            "    <default value=\"a\"><ep:e/></default>\n"
+            "    <default value=\"b\"><ep:e/></default>\n"
+            "    <default value=\"c\"><ep:e/></default>\n"
+            "  </leaf-list>\n"
+            "</module>\n";
+    UTEST_ADD_MODULE(yin, LYS_IN_YIN, NULL, &mod);
+    check_ext_parents(mod->parsed);
+}
+
+static void
+check_ext_parent_text(const struct lys_module *mod)
+{
+    const struct lysp_node_container *cont;
+    const struct lysp_node_leaf *leaf;
+    const struct lysp_ext_instance *ext;
+    LYA_COUNT_T u;
+
+    assert_int_equal(3, LYA_COUNT(mod->parsed->exts));
+    LYA_FOR(mod->parsed->exts, u) {
+        ext = &mod->parsed->exts[u];
+        if (ext->parent_stmt == LY_STMT_PREFIX) {
+            assert_ptr_equal(mod->prefix, ext->parent);
+        } else if (ext->parent_stmt == LY_STMT_DESCRIPTION) {
+            assert_ptr_equal(mod->dsc, ext->parent);
+        } else {
+            assert_int_equal(LY_STMT_REFERENCE, ext->parent_stmt);
+            assert_ptr_equal(mod->ref, ext->parent);
+        }
+    }
+
+    cont = (const struct lysp_node_container *)mod->parsed->data;
+    assert_int_equal(2, LYA_COUNT(cont->exts));
+    LYA_FOR(cont->exts, u) {
+        ext = &cont->exts[u];
+        if (ext->parent_stmt == LY_STMT_PRESENCE) {
+            assert_ptr_equal(cont->presence, ext->parent);
+        } else {
+            assert_int_equal(LY_STMT_DESCRIPTION, ext->parent_stmt);
+            assert_ptr_equal(cont->dsc, ext->parent);
+        }
+    }
+
+    leaf = (const struct lysp_node_leaf *)cont->child;
+    assert_int_equal(2, LYA_COUNT(leaf->exts));
+    LYA_FOR(leaf->exts, u) {
+        ext = &leaf->exts[u];
+        if (ext->parent_stmt == LY_STMT_UNITS) {
+            assert_ptr_equal(leaf->units, ext->parent);
+        } else {
+            assert_int_equal(LY_STMT_REFERENCE, ext->parent_stmt);
+            assert_ptr_equal(leaf->ref, ext->parent);
+        }
+    }
+}
+
+static void
+test_ext_parent_text(void **state)
+{
+    const char *yang, *yin;
+    struct lys_module *mod;
+
+    yang = "module et-yang {\n"
+            "  yang-version 1.1;\n"
+            "  namespace urn:et-yang;\n"
+            "  prefix et { et:e; }\n"
+            "  description d { et:e; }\n"
+            "  reference r { et:e; }\n"
+            "  extension e;\n"
+            "  container c {\n"
+            "    presence p { et:e; }\n"
+            "    description d { et:e; }\n"
+            "    leaf l { type string; units u { et:e; } reference r { et:e; } }\n"
+            "  }\n"
+            "}\n";
+    UTEST_ADD_MODULE(yang, LYS_IN_YANG, NULL, &mod);
+    check_ext_parent_text(mod);
+
+    yin = "<module name=\"et-yin\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:et=\"urn:et-yin\">\n"
+            "  <yang-version value=\"1.1\"/>\n"
+            "  <namespace uri=\"urn:et-yin\"/>\n"
+            "  <prefix value=\"et\"><et:e/></prefix>\n"
+            "  <description><text>d</text><et:e/></description>\n"
+            "  <reference><text>r</text><et:e/></reference>\n"
+            "  <extension name=\"e\"/>\n"
+            "  <container name=\"c\">\n"
+            "    <presence value=\"p\"><et:e/></presence>\n"
+            "    <description><text>d</text><et:e/></description>\n"
+            "    <leaf name=\"l\">\n"
+            "      <type name=\"string\"/>\n"
+            "      <units name=\"u\"><et:e/></units>\n"
+            "      <reference><text>r</text><et:e/></reference>\n"
+            "    </leaf>\n"
+            "  </container>\n"
+            "</module>\n";
+    UTEST_ADD_MODULE(yin, LYS_IN_YIN, NULL, &mod);
+    check_ext_parent_text(mod);
+}
+
 int
 main(void)
 {
@@ -2257,6 +2485,8 @@ main(void)
         UTEST(test_lysc_backlinks),
         UTEST(test_compiled_print),
         UTEST(test_obsolete),
+        UTEST(test_ext_parent_array_realloc),
+        UTEST(test_ext_parent_text),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

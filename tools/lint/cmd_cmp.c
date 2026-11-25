@@ -65,6 +65,14 @@ cmd_cmp_exec(struct ly_ctx **ctx, struct yl_opt *yo)
     const struct lys_module *mod1, *mod2;
     struct lyd_node *data = NULL;
 
+    /* load schema-comparison-output if needed */
+    mod1 = ly_ctx_get_module_implemented(*ctx, "ietf-yang-schema-comparison-output");
+    if (!mod1 && !ly_ctx_load_module(*ctx, "ietf-yang-schema-comparison-output", NULL, NULL)) {
+        YLMSG_E("Unable to load \"ietf-yang-schema-comparison-output\".");
+        rc = -1;
+        goto cleanup;
+    }
+
     /* create the second context */
     if ((rc = cmp_ctx_dup(*ctx, yo, &ctx2))) {
         goto cleanup;

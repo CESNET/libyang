@@ -66,6 +66,7 @@ typedef void (*lyd_ctx_free_clb)(struct lyd_ctx *ctx);
 #define LYD_INTOPT_SKIP_SIBLINGS    0x40    /**< Perform the validation task only for the specfic subtree, skip other siblings. */
 #define LYD_INTOPT_NO_SIBLINGS      0x80    /**< If there are any siblings, return an error. */
 #define LYD_INTOPT_EVENTTIME        0x0100  /**< Parse notification eventTime node. */
+#define LYD_INTOPT_YP_ENVELOPE      0x0200  /**< YANG-Push notification envelope is being parsed. */
 
 /**
  * @brief Internal (common) context for YANG data parsers.
@@ -80,8 +81,8 @@ struct lyd_ctx {
 
 #define LYD_PARSER_BUFSIZE 4078
     char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
-    struct ly_set node_when;       /**< set of nodes with "when" conditions */
-    struct ly_set node_types;      /**< set of nodes validated with LY_EINCOMPLETE result */
+    struct ly_ht *node_when;       /**< HT of nodes with "when" conditions */
+    struct ly_ht *node_types;      /**< HT of nodes validated with LY_EINCOMPLETE result */
     struct ly_set meta_types;      /**< set of metadata validated with LY_EINCOMPLETE result */
     struct ly_set ext_val;         /**< set of nested subtrees parsed by extensions to validate */
     struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */
@@ -107,8 +108,8 @@ struct lyd_xml_ctx {
     uint32_t int_opts;
     uint32_t path_len;
     char path[LYD_PARSER_BUFSIZE];
-    struct ly_set node_when;
-    struct ly_set node_types;
+    struct ly_ht *node_when;
+    struct ly_ht *node_types;
     struct ly_set meta_types;
     struct ly_set ext_val;
     struct lyd_node *op_node;
@@ -130,8 +131,8 @@ struct lyd_json_ctx {
     uint32_t int_opts;
     uint32_t path_len;
     char path[LYD_PARSER_BUFSIZE];
-    struct ly_set node_when;
-    struct ly_set node_types;
+    struct ly_ht *node_when;
+    struct ly_ht *node_types;
     struct ly_set meta_types;
     struct ly_set ext_val;
     struct lyd_node *op_node;
@@ -159,8 +160,8 @@ struct lyd_lyb_ctx {
     uint32_t int_opts;
     uint32_t path_len;
     char path[LYD_PARSER_BUFSIZE];
-    struct ly_set node_when;
-    struct ly_set node_types;
+    struct ly_ht *node_when;
+    struct ly_ht *node_types;
     struct ly_set meta_types;
     struct ly_set ext_val;
     struct lyd_node *op_node;
@@ -185,8 +186,8 @@ struct lyd_cbor_ctx {
     uint32_t int_opts;                   /**< internal parser options */
     uint32_t path_len;                   /**< used bytes in the path buffer */
     char path[LYD_PARSER_BUFSIZE];       /**< buffer for the generated path */
-    struct ly_set node_when;             /**< set of nodes with "when" conditions */
-    struct ly_set node_types;            /**< set of nodes with unresolved types */
+    struct ly_ht *node_when;             /**< set of nodes with "when" conditions */
+    struct ly_ht *node_types;            /**< set of nodes with unresolved types */
     struct ly_set meta_types;            /**< set of metadata with unresolved types */
     struct ly_set ext_val;               /**< set of nested extension data to validate */
     struct lyd_node *op_node;            /**< if an operation is being parsed, its node */
@@ -287,7 +288,7 @@ LY_ERR lyd_parse_xml(const struct ly_ctx *ctx, struct lyd_node *parent, struct l
  * @param[in] in Input structure.
  * @param[in] parse_opts Options for parser, see @ref dataparseroptions.
  * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
- * @param[in] data_type Expected NETCONF data type of the data.
+ * @param[in] data_type Expected NETCONF data type of the data, ::LYD_TYPE_NOTIF_ENVELOPE, or ::LYD_TYPE_NOTIF_AUTO.
  * @param[out] envp Individual parsed envelopes tree, may be returned possibly even on an error.
  * @param[out] parsed Set to add all the parsed siblings into.
  * @param[out] lydctx_p Data parser context to finish validation.
@@ -325,7 +326,7 @@ LY_ERR lyd_parse_json(const struct ly_ctx *ctx, struct lyd_node *parent, const s
  * @param[in] in Input structure.
  * @param[in] parse_opts Options for parser, see @ref dataparseroptions.
  * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
- * @param[in] data_type Expected RESTCONF data type of the data.
+ * @param[in] data_type Expected RESTCONF data type of the data, ::LYD_TYPE_NOTIF_ENVELOPE, or ::LYD_TYPE_NOTIF_AUTO.
  * @param[out] envp Individual parsed envelopes tree, may be returned possibly even on an error.
  * @param[out] parsed Set to add all the parsed siblings into.
  * @param[out] lydctx_p Data parser context to finish validation.
@@ -376,6 +377,24 @@ LY_ERR lyd_parse_cbor(const struct ly_ctx *ctx, const struct lysc_ext_instance *
         struct ly_set *parsed, ly_bool *subtree_sibling, struct lyd_ctx **lydctx_p);
 
 /**
+ * @brief Parse CBOR data as a RESTCONF notification.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] in Input structure.
+ * @param[in] parse_opts Options for parser, see @ref dataparseroptions.
+ * @param[in] val_opts Options for the validation phase, see @ref datavalidationoptions.
+ * @param[in] data_type Expected RESTCONF data type of the data, ::LYD_TYPE_NOTIF_ENVELOPE, or ::LYD_TYPE_NOTIF_AUTO.
+ * @param[in,out] first_p Pointer to the first top-level parsed node.
+ * @param[out] envp Parsed envelope with eventTime, may be returned possibly even on an error.
+ * @param[out] parsed Set to add all the parsed siblings into.
+ * @param[out] lydctx_p Data parser context to finish validation.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_cbor_restconf(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_opts, uint32_t val_opts,
+        enum lyd_type data_type, struct lyd_node **first_p, struct lyd_node **envp, struct ly_set *parsed,
+        struct lyd_ctx **lydctx_p);
+
+/**
  * @brief Validate eventTime date-and-time value.
  *
  * @param[in] node Opaque eventTime node.
@@ -383,6 +402,15 @@ LY_ERR lyd_parse_cbor(const struct ly_ctx *ctx, const struct lysc_ext_instance *
  * @return LY_ERR value on error.
  */
 LY_ERR lyd_parser_notif_eventtime_validate(const struct lyd_node *node);
+
+/**
+ * @brief Check that a YANG-Push notification envelope can be parsed.
+ *
+ * @param[in] ctx libyang context.
+ * @return LY_SUCCESS on success.
+ * @return LY_EINVAL if the 'ietf-yp-notification' module is not implemented.
+ */
+LY_ERR lyd_parser_yp_envelope_check(const struct ly_ctx *ctx);
 
 /**
  * @brief Search all the parents for an operation node, check validity based on internal parser flags.

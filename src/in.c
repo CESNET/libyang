@@ -78,6 +78,7 @@ ly_in_reset(struct ly_in *in)
 
     in->current = in->func_start = in->start;
     in->line = 1;
+    in->peeked = 0;
     return LY_SUCCESS;
 }
 
@@ -131,6 +132,7 @@ ly_in_fd(struct ly_in *in, int fd)
         in->method.fd = fd;
         in->current = in->start = addr;
         in->line = 1;
+        in->peeked = 0;
         in->length = length;
         in->bounded = 1;
     }
@@ -162,6 +164,9 @@ ly_in_file(struct ly_in *in, FILE *f)
     prev_f = in->method.f;
 
     if (f) {
+        /* a stream without a descriptor cannot be mapped, and ly_in_fd() would take -1 as a query */
+        LY_CHECK_ERR_RET(fileno(f) == -1, LOGERR(NULL, LY_EINVAL, "Input stream has no file descriptor."), NULL);
+
         /* convert LY_IN_FILE handler into LY_IN_FD to be able to update it via ly_in_fd() */
         in->type = LY_IN_FD;
         in->method.fd = fileno(prev_f);
@@ -218,11 +223,12 @@ ly_in_memory(struct ly_in *in, const char *str)
 
     LY_CHECK_ARG_RET(NULL, in, in->type == LY_IN_MEMORY, NULL);
 
-    data = in->current;
+    data = in->start;
 
     if (str) {
         in->start = in->current = str;
         in->line = 1;
+        in->peeked = 0;
         in->length = 0;
         in->bounded = 0;
     }
@@ -237,11 +243,12 @@ ly_in_memory_chunk(struct ly_in *in, const void *mem, uint32_t mem_len)
 
     LY_CHECK_ARG_RET(NULL, in, in->type == LY_IN_MEMORY, NULL);
 
-    data = in->current;
+    data = in->start;
 
     if (mem) {
         in->start = in->current = mem;
         in->line = 1;
+        in->peeked = 0;
         in->length = mem_len;
         in->bounded = 1;
     }
@@ -268,7 +275,7 @@ ly_in_new_filepath(const char *filepath, size_t len, struct ly_in **in)
     LY_CHECK_ERR_RET(fd == -1, LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", fp, strerror(errno)); free(fp),
             LY_ESYS);
 
-    LY_CHECK_ERR_RET(ret = ly_in_new_fd(fd, in), free(fp), ret);
+    LY_CHECK_ERR_RET(ret = ly_in_new_fd(fd, in), close(fd); free(fp), ret);
 
     /* convert the LY_IN_FD input handler into the LY_IN_FILE */
     (*in)->type = LY_IN_FILEPATH;
@@ -284,7 +291,7 @@ ly_in_filepath(struct ly_in *in, const char *filepath, size_t len)
     int fd, prev_fd;
     char *fp = NULL;
 
-    LY_CHECK_ARG_RET(NULL, in, in->type == LY_IN_FILEPATH, filepath ? NULL : ((void *)-1));
+    LY_CHECK_ARG_RET(NULL, in, in->type == LY_IN_FILEPATH, ((void *)-1));
 
     if (!filepath) {
         return in->method.fpath.filepath;
@@ -298,12 +305,13 @@ ly_in_filepath(struct ly_in *in, const char *filepath, size_t len)
 
     /* replace filepath */
     fd = open(fp, O_RDONLY);
-    LY_CHECK_ERR_RET(!fd, LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", fp, strerror(errno)); free(fp), NULL);
+    LY_CHECK_ERR_RET(fd == -1, LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", fp, strerror(errno)); free(fp),
+            ((void *)-1));
 
     /* convert LY_IN_FILEPATH handler into LY_IN_FD to be able to update it via ly_in_fd() */
     in->type = LY_IN_FD;
     prev_fd = ly_in_fd(in, fd);
-    LY_CHECK_ERR_RET(prev_fd == -1, in->type = LY_IN_FILEPATH; free(fp), NULL);
+    LY_CHECK_ERR_RET(prev_fd == -1, in->type = LY_IN_FILEPATH; close(fd); free(fp), ((void *)-1));
 
     /* and convert the result back */
     in->type = LY_IN_FILEPATH;

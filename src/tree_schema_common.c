@@ -66,7 +66,7 @@ lysp_last_revision(const struct lysp_module *pmod, const struct lysp_revision *r
 {
     LYA_COUNT_T u;
     int cmp;
-    const char *last_revision = NULL, *name, *mod_str;
+    const char *last_revision = NULL, *name = NULL, *mod_str = NULL;
     const struct ly_ctx *ctx = NULL;
 
     if (!revs) {
@@ -797,7 +797,7 @@ cleanup:
  * @param[in] revision Revision of module to load.
  * @param[in] mod_latest Module with the latest revision found in context, otherwise set to NULL.
  * @param[in,out] new_mods Set of all the new mods added to the context. Includes this module and all of its imports.
- * @param[out] mod Loaded module.
+ * @param[out] mod Loaded module, always returned if added into context (even on error).
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
@@ -1153,6 +1153,10 @@ lysp_inject_submodule(struct lysp_ctx *pctx, struct lysp_include *inc)
         inc_tofill->submodule = inc->submodule;
     } else {
         LYA_ADD_ITEM(main_pmod->includes, inc_new, LOGMEM(PARSER_CTX(pctx)); return LY_EMEM);
+
+        /* revalidate the backward parent pointers from extensions */
+        LYSP_ARRAY_EXT_PARENTS_UPDATE(main_pmod->includes, exts, LY_STMT_INCLUDE);
+        LYSP_ARRAY_EXT_PARENTS_UPDATE(main_pmod->includes, exts, LY_STMT_REVISION_DATE, rev);
 
         inc_new->submodule = inc->submodule;
         DUP_STRING_RET(PARSER_CTX(pctx), inc->name, inc_new->name);
@@ -2985,7 +2989,7 @@ lysc_value_cmp(const struct lysc_node *schema, const struct lyd_node *ctx_node, 
     const char *canon;
 
     r = lyd_value_validate3(schema->module->ctx, ((struct lysc_node_leaf *)schema)->type, val->str, strlen(val->str),
-            LY_VALUE_SCHEMA_RESOLVED, val->prefixes, LYD_HINT_SCHEMA, ctx_node, NULL, 1, NULL, &canon);
+            LY_VALUE_SCHEMA_RESOLVED, val->prefixes, LYD_HINT_SCHEMA, ctx_node, ctx_node, NULL, NULL, 1, NULL, &canon);
     if (r && (r != LY_EINCOMPLETE)) {
         return -1;
     }

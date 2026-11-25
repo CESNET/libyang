@@ -1949,6 +1949,172 @@ test_xpath(void **state)
     ly_set_free(set, NULL);
 }
 
+static void
+test_path_mounted_only(void **state)
+{
+    const struct lysc_node *snode;
+    struct lyd_node *data, *node;
+    struct ly_set *set;
+
+    /* the mounted module is NOT loaded in the parent context, only in the shared mounted context (RFC 8528 sec. 2.2) */
+    assert_null(ly_ctx_get_module_implemented(UTEST_LYCTX, "mount-only"));
+
+    ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<root xmlns=\"urn:sm\">"
+            "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
+            "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
+            "  <module-set>"
+            "    <name>test-set</name>"
+            "    <module>"
+            "      <name>ietf-datastores</name>"
+            "      <revision>2018-02-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-library</name>"
+            "      <revision>2019-01-04</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>ietf-yang-schema-mount</name>"
+            "      <revision>2019-01-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>mount-only</name>"
+            "      <namespace>urn:mount-only</namespace>"
+            "    </module>"
+            "  </module-set>"
+            "  <schema>"
+            "    <name>test-schema</name>"
+            "    <module-set>test-set</module-set>"
+            "  </schema>"
+            "  <datastore>"
+            "    <name>ds:running</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <datastore>"
+            "    <name>ds:operational</name>"
+            "    <schema>test-schema</schema>"
+            "  </datastore>"
+            "  <content-id>1</content-id>"
+            "</yang-library>"
+            "</root>"
+            "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
+            "  <mount-point>"
+            "    <module>sm</module>"
+            "    <label>root</label>"
+            "    <shared-schema/>"
+            "  </mount-point>"
+            "</schema-mounts>");
+
+    /* schema path crossing the mount point */
+    snode = lys_find_path(UTEST_LYCTX, NULL, "/sm:root/mount-only:cont/l", 0);
+    assert_non_null(snode);
+    assert_string_equal(snode->name, "l");
+    assert_string_equal(snode->module->name, "mount-only");
+    assert_ptr_not_equal(snode->module->ctx, UTEST_LYCTX);
+
+    /* operation in the mounted module */
+    snode = lys_find_path(UTEST_LYCTX, NULL, "/sm:root/mount-only:reset", 0);
+    assert_non_null(snode);
+    assert_int_equal(snode->nodetype, LYS_RPC);
+
+    /* data path crossing the mount point */
+    assert_int_equal(LY_SUCCESS, lyd_new_path(NULL, UTEST_LYCTX, "/sm:root/mount-only:cont/l", "val", 0, &data));
+    assert_int_equal(LY_SUCCESS, lyd_find_path(data, "/sm:root/mount-only:cont/l", 0, &node));
+    assert_ptr_not_equal(LYD_CTX(node), UTEST_LYCTX);
+    assert_string_equal(lyd_get_value(node), "val");
+
+    /* still an error for a module in neither context */
+    assert_null(lys_find_path(UTEST_LYCTX, NULL, "/sm:root/no-such-mod:cont", 0));
+    CHECK_LOG_CTX("Not found module prefix \"no-such-mod\" in path (prefix format JSON module names).", "/sm:root", 0);
+
+    /* xpath schema evaluation crossing the mount point */
+    assert_int_equal(LY_SUCCESS, lys_find_xpath(UTEST_LYCTX, NULL, "//mount-only:cont/l", 0, &set));
+    assert_int_equal(set->count, 1);
+    assert_ptr_not_equal(set->snodes[0]->module->ctx, UTEST_LYCTX);
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_SUCCESS, lys_find_xpath_atoms(UTEST_LYCTX, NULL, "/sm:root/mount-only:cont/l", 0, &set));
+    assert_int_equal(set->count, 3);
+    assert_ptr_equal(set->snodes[0]->module->ctx, UTEST_LYCTX);
+    assert_ptr_not_equal(set->snodes[1]->module->ctx, UTEST_LYCTX);
+    assert_ptr_not_equal(set->snodes[2]->module->ctx, UTEST_LYCTX);
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_EVALID, lys_find_xpath(UTEST_LYCTX, NULL, "/sm:root/no-such-mod:cont", 0, &set));
+    CHECK_LOG_CTX("Not found module prefix \"no-such-mod\" in path (prefix format JSON module names).", NULL, 0);
+
+    /* xpath data evaluation crossing the mount point */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(data, "/sm:root/mount-only:cont/l", &set));
+    assert_int_equal(set->count, 1);
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(data, "//mount-only:cont/l", &set));
+    assert_int_equal(set->count, 1);
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_EVALID, lyd_find_xpath(data, "/sm:root/no-such-mod:cont", &set));
+    CHECK_LOG_CTX("Not found module prefix \"no-such-mod\" in path (prefix format JSON module names).", "/sm:root", 0);
+
+    lyd_free_siblings(data);
+}
+
+static void
+test_lyb(void **state)
+{
+    const char *xml;
+    char *lyb;
+    uint32_t lyb_len;
+    struct lyd_node *data;
+
+    ly_ctx_set_ext_data_clb(UTEST_LYCTX, test_ext_data_clb,
+            "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
+            "    xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">"
+            "  <module-set><name>test-set</name>"
+            "    <module>"
+            "      <name>ietf-datastores</name><revision>2018-02-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace></module>"
+            "    <module>"
+            "      <name>ietf-yang-library</name><revision>2019-01-04</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace></module>"
+            "    <module>"
+            "      <name>ietf-yang-schema-mount</name><revision>2019-01-14</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount</namespace>"
+            "    </module>"
+            "    <module>"
+            "      <name>mounted-only</name><revision>2026-11-03</revision>"
+            "      <namespace>urn:mounted-only</namespace>"
+            "    </module>"
+            "    <import-only-module>"
+            "      <name>ietf-yang-types</name><revision>2025-12-22</revision>"
+            "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace>"
+            "    </import-only-module>"
+            "  </module-set>"
+            "  <schema><name>test-schema</name><module-set>test-set</module-set></schema>"
+            "  <datastore><name>ds:running</name><schema>test-schema</schema></datastore>"
+            "  <datastore><name>ds:operational</name><schema>test-schema</schema></datastore>"
+            "  <content-id>1</content-id>"
+            "</yang-library>"
+            "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
+            "  <module-set-id>1</module-set-id>"
+            "</modules-state>"
+            "<schema-mounts xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount\">"
+            "  <mount-point><module>sm</module><label>root</label><inline/></mount-point>"
+            "</schema-mounts>");
+
+    assert_null(ly_ctx_get_module_implemented(UTEST_LYCTX, "mounted-only"));
+    xml = "<root xmlns=\"urn:sm\"><top xmlns=\"urn:mounted-only\"><name>x</name></top></root>";
+    CHECK_PARSE_LYD_PARAM(xml, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    assert_int_equal(LY_SUCCESS, utest_lyd_print_mem_len(&lyb, &lyb_len, data, LYD_LYB, 0));
+    lyd_free_siblings(data);
+
+    CHECK_PARSE_LYD_PARAM_LEN(lyb, lyb_len, LYD_LYB, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, data);
+    free(lyb);
+    lyd_free_siblings(data);
+}
+
 int
 main(void)
 {
@@ -1963,6 +2129,8 @@ main(void)
         UTEST(test_new, setup),
         UTEST(test_lys_getnext, setup),
         UTEST(test_xpath, setup),
+        UTEST(test_path_mounted_only, setup),
+        UTEST(test_lyb, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

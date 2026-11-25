@@ -37,6 +37,41 @@ struct lyd_val_getnext {
 };
 
 /**
+ * @brief Structure for hash tables with nodes not yet resolved (validated).
+ */
+struct lyd_val_unres {
+    struct ly_ht *node_when;
+    struct ly_ht *node_types;
+};
+
+/**
+ * @brief Create a new HT for unres nodes.
+ *
+ * @param[out] ht New HT.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_val_unres_ht_new(struct ly_ht **ht);
+
+/**
+ * @brief Add a node into a validation HT.
+ *
+ * @param[in] node Node to add.
+ * @param[in] ht HT to add to.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_val_unres_ht_add(const struct lyd_node *node, struct ly_ht *ht);
+
+/**
+ * @brief Check whether a node is found in validate unres.
+ *
+ * @param[in] node Node to check.
+ * @param[in] val_unres Val unres structure, can be NULL.
+ * @return 1 if @p node is unresolved;
+ * @return 0 otherwise.
+ */
+ly_bool lyd_validate_node_is_unres(const struct lyd_node *node, const struct lyd_val_unres *val_unres);
+
+/**
  * @brief Create a getnext cached schema node validation HT.
  *
  * @param[out] getnext_ht_p Created getnext HT.
@@ -84,22 +119,18 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * !! It is assumed autodeleted nodes cannot be in the unresolved node type set !!
  *
  * @param[in,out] tree Data tree, is updated if some nodes are autodeleted.
- * @param[in] mod Module of the @p tree to take into consideration when deleting @p tree and moving it.
- * If set, it is expected @p tree should point to the first node of @p mod. Otherwise it will simply be
- * the first top-level sibling.
  * @param[in] data_type Validate data type.
- * @param[in] node_when Set with nodes with "when" conditions, can be NULL.
- * @param[in] when_xp_opts Additional XPath options to use for evaluating "when".
- * @param[in] node_types Set with nodes with unresolved types, can be NULL
+ * @param[in] node_when HT with nodes with "when" conditions, can be NULL.
+ * @param[in] node_types HT with nodes with unresolved types, can be NULL
  * @param[in] meta_types Set with metadata with unresolved types, can be NULL.
  * @param[in] ext_val Set with extension data to validate, can be NULL.
  * @param[in] val_opts Validation options, see @ref datavalidationoptions.
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_unres(struct lyd_node **tree, const struct lys_module *mod, enum lyd_type data_type,
-        struct ly_set *node_when, uint32_t when_xp_opts, struct ly_set *node_types, struct ly_set *meta_types,
-        struct ly_set *ext_val, uint32_t val_opts, struct lyd_node **diff);
+LY_ERR lyd_validate_unres(struct lyd_node **tree, enum lyd_type data_type, struct ly_ht *node_when,
+        struct ly_ht *node_types, struct ly_set *meta_types, struct ly_set *ext_val, uint32_t val_opts,
+        struct lyd_node **diff);
 
 /**
  * @brief Validate new siblings. Specifically, check duplicated instances, autodelete default values and cases.
@@ -145,15 +176,15 @@ LY_ERR lyd_validate_node_ext(struct lyd_node *node, struct ly_set *ext_val);
  * @param[in] ctx libyang context.
  * @param[in] val_opts Validation options, see @ref datavalidationoptions.
  * @param[in] validate_subtree Whether subtree was already validated (as part of data parsing) or not (separate validation).
- * @param[in] node_when_p Set of nodes with when conditions, if NULL a local set is used.
- * @param[in] node_types_p Set of unres node types, if NULL a local set is used.
+ * @param[in] node_when_p Hash table of nodes with when conditions, if NULL a local HT is used.
+ * @param[in] node_types_p Hash table of unres node types, if NULL a local HT is used.
  * @param[in] meta_types_p Set of unres metadata types, if NULL a local set is used.
  * @param[in] ext_val_p Set of unres extension data to validate, if NULL a local set is used.
  * @param[out] diff Generated validation diff, not generated if NULL.
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate(struct lyd_node **tree, const struct lys_module *module, const struct ly_ctx *ctx, uint32_t val_opts,
-        ly_bool validate_subtree, struct ly_set *node_when_p, struct ly_set *node_types_p, struct ly_set *meta_types_p,
+        ly_bool validate_subtree, struct ly_ht *node_when_p, struct ly_ht *node_types_p, struct ly_set *meta_types_p,
         struct ly_set *ext_val_p, struct lyd_node **diff);
 
 #endif /* LY_VALIDATION_H_ */
