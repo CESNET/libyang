@@ -73,6 +73,11 @@ ipv6address_str2ip(const char *value, uint32_t value_len, uint32_t options, cons
     if ((zone_ptr = ly_strnchr(value, '%', value_len))) {
         /* there is a zone index */
         zone_len = value_len - (zone_ptr - value) - 1;
+        if (!zone_len) {
+            ret = ly_err_new(err, LY_EVALID, LYVE_DATA, NULL, NULL, "Missing zone following '%%' in IPv6 address \"%.*s\".",
+                    (int)value_len, value);
+            goto cleanup;
+        }
         ret = lydict_insert(ctx, zone_ptr + 1, zone_len, &val->zone);
         LY_CHECK_GOTO(ret, cleanup);
 
