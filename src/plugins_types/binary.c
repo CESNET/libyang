@@ -304,11 +304,11 @@ lyplg_type_store_binary(const struct ly_ctx *ctx, const struct lysc_type *type, 
         /* accept newline every 64 characters (PEM data) */
         ret = binary_base64_newlines((char **)&value, &value_size, &options, err);
         LY_CHECK_GOTO(ret, cleanup);
-
-        /* validate */
-        ret = binary_base64_validate(value, value_size, err);
-        LY_CHECK_GOTO(ret, cleanup);
     }
+
+    /* validate so that decode can assume a valid format */
+    ret = binary_base64_validate(value, value_size, err);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* get the binary value */
     ret = binary_base64_decode(value, value_size, &val->data, &val->size);
