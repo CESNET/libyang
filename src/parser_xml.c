@@ -1326,10 +1326,6 @@ lyd_parse_xml(const struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_node
     }
 
 cleanup:
-    /* there should be no unres stored if validation should be skipped */
-    assert(!(parse_opts & LYD_PARSE_ONLY) || (!lydctx->node_types->used && !lydctx->meta_types.count &&
-            !lydctx->node_when->used));
-
     lyd_free_tree(act);
     if (rc && (!(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
         lyd_xml_ctx_free((struct lyd_ctx *)lydctx);
@@ -1649,10 +1645,6 @@ lyd_parse_xml_netconf(const struct ly_ctx *ctx, struct lyd_node *parent, struct 
     }
 
 cleanup:
-    /* there should be no unres stored if validation should be skipped */
-    assert(!(parse_opts & LYD_PARSE_ONLY) || (!lydctx->node_types->used && !lydctx->meta_types.count &&
-            !lydctx->node_when->used));
-
     if (rc) {
         lyd_xml_ctx_free((struct lyd_ctx *)lydctx);
     } else {

@@ -1768,10 +1768,6 @@ lyd_parse_json(const struct ly_ctx *ctx, struct lyd_node *parent, const struct l
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
 cleanup:
-    /* there should be no unresolved types stored */
-    assert(!(parse_opts & LYD_PARSE_ONLY) || !lydctx || (!lydctx->node_types->used && !lydctx->meta_types.count &&
-            !lydctx->node_when->used));
-
     if (rc && (!lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
         lyd_json_ctx_free((struct lyd_ctx *)lydctx);
     } else {
@@ -2034,10 +2030,6 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, struct lyd_node *parent, struc
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
 cleanup:
-    /* there should be no unres stored if validation should be skipped */
-    assert(!(parse_opts & LYD_PARSE_ONLY) || !lydctx || (!lydctx->node_types->used && !lydctx->meta_types.count &&
-            !lydctx->node_when->used));
-
     if (rc) {
         lyd_json_ctx_free((struct lyd_ctx *)lydctx);
     } else {

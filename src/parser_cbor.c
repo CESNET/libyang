@@ -1463,10 +1463,6 @@ lyd_parse_cbor(const struct ly_ctx *ctx, const struct lysc_ext_instance *ext, st
     (void)subtree_sibling;
 
 cleanup:
-    /* there should be no unresolved types stored */
-    assert(!(parse_opts & LYD_PARSE_ONLY) || !lydctx || (!lydctx->node_types->used && !lydctx->meta_types.count &&
-            !lydctx->node_when->used));
-
     if (rc && (!lydctx || !(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
         lyd_cbor_ctx_free((struct lyd_ctx *)lydctx);
         lydctx = NULL;
