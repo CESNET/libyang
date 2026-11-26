@@ -77,10 +77,6 @@ struct lyd_ctx {
     uint32_t parse_opts;           /**< various @ref dataparseroptions. */
     uint32_t val_opts;             /**< various @ref datavalidationoptions. */
     uint32_t int_opts;             /**< internal parser options */
-    uint32_t path_len;             /**< used bytes in the path buffer */
-
-#define LYD_PARSER_BUFSIZE 4078
-    char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
     struct ly_ht *node_when;       /**< HT of nodes with "when" conditions */
     struct ly_ht *node_types;      /**< HT of nodes validated with LY_EINCOMPLETE result */
     struct ly_set meta_types;      /**< set of metadata validated with LY_EINCOMPLETE result */
@@ -106,8 +102,6 @@ struct lyd_xml_ctx {
     uint32_t parse_opts;
     uint32_t val_opts;
     uint32_t int_opts;
-    uint32_t path_len;
-    char path[LYD_PARSER_BUFSIZE];
     struct ly_ht *node_when;
     struct ly_ht *node_types;
     struct ly_set meta_types;
@@ -129,8 +123,6 @@ struct lyd_json_ctx {
     uint32_t parse_opts;
     uint32_t val_opts;
     uint32_t int_opts;
-    uint32_t path_len;
-    char path[LYD_PARSER_BUFSIZE];
     struct ly_ht *node_when;
     struct ly_ht *node_types;
     struct ly_set meta_types;
@@ -158,8 +150,6 @@ struct lyd_lyb_ctx {
         uint32_t print_options;
     };
     uint32_t int_opts;
-    uint32_t path_len;
-    char path[LYD_PARSER_BUFSIZE];
     struct ly_ht *node_when;
     struct ly_ht *node_types;
     struct ly_set meta_types;
@@ -184,8 +174,6 @@ struct lyd_cbor_ctx {
     uint32_t parse_opts;                 /**< various @ref dataparseroptions. */
     uint32_t val_opts;                   /**< various @ref datavalidationoptions. */
     uint32_t int_opts;                   /**< internal parser options */
-    uint32_t path_len;                   /**< used bytes in the path buffer */
-    char path[LYD_PARSER_BUFSIZE];       /**< buffer for the generated path */
     struct ly_ht *node_when;             /**< set of nodes with "when" conditions */
     struct ly_ht *node_types;            /**< set of nodes with unresolved types */
     struct ly_set meta_types;            /**< set of metadata with unresolved types */
