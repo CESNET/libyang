@@ -204,7 +204,7 @@ test_leaf(void **state)
 
     /* missing referenced metadata node */
     PARSER_CHECK_ERROR("{\"@a:foo\" : { \"a:hint\" : 1 }}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Missing JSON data instance to be coupled with @a:foo metadata.", "/@a:foo", 1);
+            "Missing data instance to be coupled with @a:foo metadata.", "/@a:foo", 1);
 
     /* missing namespace for meatadata*/
     PARSER_CHECK_ERROR("{\"a:foo\" : \"value\", \"@a:foo\" : { \"hint\" : 1 }}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
@@ -336,13 +336,13 @@ test_leaflist(void **state)
 
     /* missing referenced metadata node */
     PARSER_CHECK_ERROR("{\"@a:ll1\":[{\"a:hint\":1}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "Missing JSON data instance to be coupled with @a:ll1 metadata.", "/@a:ll1", 1);
+            "Missing data instance to be coupled with @a:ll1 metadata.", "/@a:ll1", 1);
 
     PARSER_CHECK_ERROR("{\"a:ll1\":[1],\"@a:ll1\":[{\"a:hint\":1},{\"a:hint\":2}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
             "Missing JSON data instance #2 of a:ll1 to be coupled with metadata.", "/a:ll1", 1);
 
     PARSER_CHECK_ERROR("{\"@a:ll1\":[{\"a:hint\":1},{\"a:hint\":2},{\"a:hint\":3}],\"a:ll1\" : [1, 2]}", 0, LYD_VALIDATE_PRESENT,
-            tree, LY_EVALID, "Missing JSON data instance #3 to be coupled with @a:ll1 metadata.", "/@a:ll1", 1);
+            tree, LY_EVALID, "Missing data instance #3 to be coupled with @a:ll1 metadata.", "/@a:ll1", 1);
 }
 
 static void
@@ -716,7 +716,7 @@ test_opaq(void **state)
     /* invalid metadata */
     data = "{\"@a:foo\":\"str\",\"@a:foo3\":1,\"a:foo3\":2}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID, "Unknown module of node \"@a:foo\".", NULL, 0);
-    CHECK_LOG_CTX("Missing JSON data instance to be coupled with @a:foo metadata.", "/@a:foo", 1);
+    CHECK_LOG_CTX("Missing data instance to be coupled with @a:foo metadata.", "/@a:foo", 1);
 
     /* empty name */
     PARSER_CHECK_ERROR("{\"@a:foo\":{\"\":0}}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,

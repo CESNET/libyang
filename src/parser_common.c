@@ -146,6 +146,87 @@ lyd_parser_find_operation(const struct lyd_node *parent, uint32_t int_opts, stru
 }
 
 LY_ERR
+lyd_parser_get_snode(struct lyd_ctx *lydctx, ly_bool is_attr, const char *prefix, uint32_t prefix_len, const char *name,
+        uint32_t name_len, struct lyd_node *parent, const struct lysc_node **snode, struct lysc_ext_instance **ext)
+{
+    LY_ERR r;
+    struct lys_module *mod = NULL;
+    const struct lysc_node *sparent;
+    uint32_t getnext_opts = lydctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0;
+
+    *snode = NULL;
+    if (ext) {
+        *ext = NULL;
+    }
+
+    /* try to find parent schema node */
+    if (parent && parent->schema) {
+        /* use only a schema parent */
+        sparent = parent->schema;
+    } else {
+        sparent = NULL;
+    }
+    if (sparent && (sparent->nodetype & LYD_NODE_ANY)) {
+        if (!prefix_len) {
+            /* inherit the module */
+            mod = sparent->module;
+        }
+
+        /* do not search in children */
+        sparent = NULL;
+    }
+
+    if (!prefix_len) {
+        prefix = NULL;
+    }
+    r = lys_find_child_node(parent ? LYD_CTX(parent) : lydctx->data_ctx->ctx, sparent, mod, prefix, prefix_len,
+            LY_VALUE_JSON, NULL, name, name_len, getnext_opts, snode, ext);
+    LY_CHECK_RET(r && (r != LY_ENOT), r);
+
+    if (!r) {
+        /* check that schema node is valid and can be used but rely on that implicitly for extensions */
+        if (ext && !*ext) {
+            LY_CHECK_RET(lyd_parser_check_schema(lydctx, *snode));
+        }
+        return LY_SUCCESS;
+    }
+
+    /* generate error, find the module */
+    if (prefix_len) {
+        mod = ly_ctx_get_module_implemented2(parent ? LYD_CTX(parent) : lydctx->data_ctx->ctx, prefix, prefix_len);
+    } else if (parent) {
+        if (parent->schema) {
+            mod = parent->schema->module;
+        }
+    } else if (!(lydctx->int_opts & LYD_INTOPT_ANY)) {
+        LOGVAL(lydctx->data_ctx->ctx, parent, LYVE_SYNTAX_JSON,
+                "Top-level object member \"%.*s\" must be namespace-qualified.",
+                (int)(is_attr ? name_len + 1 : name_len), is_attr ? name - 1 : name);
+        return LY_EVALID;
+    }
+    if (!(lydctx->parse_opts & LYD_PARSE_STRICT)) {
+        return LY_SUCCESS;
+    }
+
+    if (!mod) {
+        /* unknown module */
+        LOGVAL(lydctx->data_ctx->ctx, parent, LYVE_REFERENCE, "No module named \"%.*s\" in the context.",
+                (int)prefix_len, prefix);
+        return LY_EVALID;
+    }
+
+    /* unknown node name */
+    if (sparent) {
+        LOGVAL(lydctx->data_ctx->ctx, parent, LYVE_REFERENCE, "Node \"%.*s\" not found as a child of \"%s\" node.",
+                (int)name_len, name, sparent->name);
+    } else {
+        LOGVAL(lydctx->data_ctx->ctx, parent, LYVE_REFERENCE, "Node \"%.*s\" not found in the \"%s\" module.",
+                (int)name_len, name, mod->name);
+    }
+    return LY_EVALID;
+}
+
+LY_ERR
 lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
 {
     LY_ERR rc = LY_SUCCESS;
@@ -226,6 +307,229 @@ error_node_inval:
 
 cleanup:
     return rc;
+}
+
+void
+lyd_parser_parse_name(const char *value, uint32_t value_len, const char **name_p, uint32_t *name_len_p, const char **prefix_p,
+        uint32_t *prefix_len_p, ly_bool *is_meta_p)
+{
+    const char *name, *prefix = NULL;
+    uint32_t name_len, prefix_len = 0;
+    ly_bool is_meta = 0;
+
+    name = memchr(value, ':', value_len);
+    if (name) {
+        prefix = value;
+        if (*prefix == '@') {
+            is_meta = 1;
+            prefix++;
+        }
+        prefix_len = name - prefix;
+        name++;
+        name_len = value_len - (prefix_len + 1) - is_meta;
+    } else {
+        name = value;
+        if (name[0] == '@') {
+            is_meta = 1;
+            name++;
+        }
+        name_len = value_len - is_meta;
+    }
+
+    *name_p = name;
+    *name_len_p = name_len;
+    *prefix_p = prefix;
+    *prefix_len_p = prefix_len;
+    *is_meta_p = is_meta;
+}
+
+LY_ERR
+lyd_parser_metadata_finish(struct lyd_ctx *lydctx, struct lyd_node **first_p, struct ly_set *parsed)
+{
+    LY_ERR ret = LY_SUCCESS;
+    const struct ly_ctx *ctx = lydctx->data_ctx->ctx;
+    struct lyd_node *node, *attr, *next, *meta_iter;
+    struct lyd_node_opaq *meta_container, *meta;
+    struct lys_module *mod;
+    uint64_t instance = 0, match;
+    uint32_t name_len, prefix_len;
+    const char *prev = NULL, *name, *prefix;
+    const struct lysc_node *snode;
+    ly_bool is_attr;
+
+    /* finish linking metadata */
+    LY_LIST_FOR_SAFE(*first_p, next, attr) {
+        meta_container = (struct lyd_node_opaq *)attr;
+
+        if (attr->schema || (meta_container->name.name[0] != '@')) {
+            /* not an opaq metadata node */
+            continue;
+        }
+
+        if (prev != meta_container->name.name) {
+            /* metas' names are stored in dictionary, so checking pointers must works */
+            lydict_remove(ctx, prev);
+            LY_CHECK_GOTO(ret = lydict_insert(ctx, meta_container->name.name, 0, &prev), cleanup);
+            instance = 1;
+        } else {
+            instance++;
+        }
+
+        /* find the corresponding data node */
+        match = 0;
+        LY_LIST_FOR(*first_p, node) {
+            if (!node->schema) {
+                /* opaq node - we are going to put into it just a generic attribute. */
+                if (strcmp(&meta_container->name.name[1], ((struct lyd_node_opaq *)node)->name.name)) {
+                    continue;
+                }
+
+                if (((struct lyd_node_opaq *)node)->hints & LYD_NODEHINT_LIST) {
+                    LOGVAL(ctx, attr, LYVE_SYNTAX, "Metadata container references a sibling list node %s.", LYD_NAME(node));
+                    ret = LY_EVALID;
+                    goto cleanup;
+                }
+
+                /* match */
+                match++;
+                if (match != instance) {
+                    continue;
+                }
+
+                LY_LIST_FOR(meta_container->child, meta_iter) {
+                    if (meta_iter->schema) {
+                        /* matched a top-level schema node, cannot be valid metadata */
+                        LOGVAL(ctx, attr, LYVE_SYNTAX, "Invalid metadata \"%s\".", LYD_NAME(meta_iter));
+                        ret = LY_EVALID;
+                        goto cleanup;
+                    }
+
+                    /* convert opaq node to a attribute of the opaq node */
+                    meta = (struct lyd_node_opaq *)meta_iter;
+
+                    ret = lyd_create_attr(node, NULL, ctx, meta->name.name, strlen(meta->name.name), meta->name.prefix,
+                            ly_strlen(meta->name.prefix), meta->name.module_name, ly_strlen(meta->name.module_name),
+                            meta->value, ly_strlen(meta->value), NULL, meta->format, NULL, meta->hints);
+                    LY_CHECK_GOTO(ret, cleanup);
+                }
+
+                /* done */
+                break;
+            } else {
+                /* this is the second time we are resolving the schema node, so it must succeed,
+                 * but remember that snode can be still NULL */
+                lyd_parser_parse_name(meta_container->name.name, strlen(meta_container->name.name), &name, &name_len,
+                        &prefix, &prefix_len, &is_attr);
+                assert(is_attr);
+                lyd_parser_get_snode((struct lyd_ctx *)lydctx, is_attr, prefix, prefix_len, name, name_len,
+                        (*first_p)->parent, &snode, NULL);
+
+                if (snode != node->schema) {
+                    continue;
+                }
+
+                /* match */
+                match++;
+                if (match != instance) {
+                    continue;
+                }
+
+                LY_LIST_FOR(meta_container->child, meta_iter) {
+                    if (meta_iter->schema) {
+                        /* matched a top-level schema node, cannot be valid metadata */
+                        LOGVAL(ctx, attr, LYVE_SYNTAX, "Invalid metadata \"%s\".", LYD_NAME(meta_iter));
+                        ret = LY_EVALID;
+                        goto cleanup;
+                    }
+
+                    /* convert node to a metadata of the node */
+                    meta = (struct lyd_node_opaq *)meta_iter;
+
+                    mod = ly_ctx_get_module_implemented(ctx, meta->name.prefix);
+                    if (mod) {
+                        ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, node, NULL, mod, meta->name.name,
+                                strlen(meta->name.name), meta->value, ly_strlen(meta->value) * 8, NULL, meta->format,
+                                NULL, meta->hints, node->schema, node);
+                        LY_CHECK_GOTO(ret, cleanup);
+                    } else if (lydctx->parse_opts & LYD_PARSE_STRICT) {
+                        if (meta->name.prefix) {
+                            LOGVAL(ctx, attr, LYVE_REFERENCE,
+                                    "Unknown (or not implemented) YANG module \"%s\" of metadata \"%s%s%s\".",
+                                    meta->name.prefix, meta->name.prefix, ly_strlen(meta->name.prefix) ? ":" : "",
+                                    meta->name.name);
+                        } else {
+                            LOGVAL(ctx, attr, LYVE_REFERENCE, "Missing YANG module of metadata \"%s\".", meta->name.name);
+                        }
+                        ret = LY_EVALID;
+                        goto cleanup;
+                    }
+                }
+
+                /* add/correct flags */
+                ret = lyd_parser_set_data_flags(node, &node->meta, (struct lyd_ctx *)lydctx, NULL);
+                LY_CHECK_GOTO(ret, cleanup);
+                break;
+            }
+        }
+
+        if (match != instance) {
+            /* there is no corresponding data node for the metadata */
+            if (instance > 1) {
+                LOGVAL(ctx, attr, LYVE_REFERENCE, "Missing data instance #%" PRIu64 " to be coupled with %s metadata.",
+                        instance, meta_container->name.name);
+            } else {
+                LOGVAL(ctx, attr, LYVE_REFERENCE, "Missing data instance to be coupled with %s metadata.",
+                        meta_container->name.name);
+            }
+            ret = LY_EVALID;
+        } else {
+            /* remove the opaq attr */
+            if (attr == (*first_p)) {
+                *first_p = attr->next;
+            }
+            if (parsed) {
+                ly_set_rm(parsed, attr, NULL);
+            }
+            lyd_free_tree(attr);
+        }
+    }
+
+cleanup:
+    lydict_remove(ctx, prev);
+    return ret;
+}
+
+LY_ERR
+lyd_parser_subtree_node_finish(struct lyd_ctx *lydctx, struct ly_set *parsed, struct lyd_node *node)
+{
+    struct lyd_node **child_p;
+
+    if (!node) {
+        /* no node actually parsed */
+        return LY_SUCCESS;
+    }
+
+    /* remember a successfully parsed node */
+    if (parsed) {
+        ly_set_add(parsed, node, 1, NULL);
+    }
+
+    /* finish metadata linking in the children in case they were parsed before the target nodes */
+    if (node->schema && (node->schema->nodetype & LYD_NODE_ANY)) {
+        child_p = &((struct lyd_node_any *)node)->child;
+    } else {
+        child_p = lyd_node_child_p(node);
+    }
+    if (child_p) {
+        LY_CHECK_RET(lyd_parser_metadata_finish(lydctx, child_p, parsed));
+    }
+
+    /* remember OP node */
+    if (node->schema && (node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
+        lydctx->op_node = node;
+    }
+
+    return LY_SUCCESS;
 }
 
 LY_ERR

@@ -432,6 +432,26 @@ LY_ERR lyd_parser_yp_envelope_check(const struct ly_ctx *ctx);
 LY_ERR lyd_parser_find_operation(const struct lyd_node *parent, uint32_t int_opts, struct lyd_node **op);
 
 /**
+ * @brief Get schema node corresponding to the input parameters.
+ *
+ * @param[in] lydctx Data parser context.
+ * @param[in] is_attr Flag if the reference to the node is an attribute, for logging only.
+ * @param[in] prefix Requested node's prefix (module name).
+ * @param[in] prefix_len Length of the @p prefix.
+ * @param[in] name Requested node's name.
+ * @param[in] name_len Length of the @p name.
+ * @param[in] parent Parent of the node being processed, can be NULL in case of top-level.
+ * @param[out] snode Found schema node corresponding to the input parameters. If NULL, parse as an opaque node.
+ * @param[out] ext Extension instance that provided @p snode, if any.
+ * @return LY_SUCCES on success.
+ * @return LY_ENOT if the whole object was parsed (skipped or as an extension).
+ * @return LY_ERR on error.
+ */
+LY_ERR lyd_parser_get_snode(struct lyd_ctx *lydctx, ly_bool is_attr, const char *prefix, uint32_t prefix_len,
+        const char *name, uint32_t name_len, struct lyd_node *parent, const struct lysc_node **snode,
+        struct lysc_ext_instance **ext);
+
+/**
  * @brief Check that a data node representing the @p snode is suitable based on options.
  *
  * @param[in] lydctx Common data parsers context.
@@ -439,6 +459,50 @@ LY_ERR lyd_parser_find_operation(const struct lyd_node *parent, uint32_t int_opt
  * @return LY_SUCCESS or LY_EVALID
  */
 LY_ERR lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode);
+
+/**
+ * @brief Parse member-name as [\@][prefix:][name]
+ *
+ * \@ - metadata flag, maps to 1 in @p is_meta_p
+ * prefix - name of the module of the data node
+ * name - name of the data node
+ *
+ * All the output parameter are mandatory. Function only parse the member-name, all the appropriate checks are up to the caller.
+ *
+ * @param[in] value String to parse
+ * @param[in] value_len Length of the @p str.
+ * @param[out] name_p Pointer to the beginning of the parsed name.
+ * @param[out] name_len_p Pointer to the length of the parsed name.
+ * @param[out] prefix_p Pointer to the beginning of the parsed prefix. If the member-name does not contain prefix, result is NULL.
+ * @param[out] prefix_len_p Pointer to the length of the parsed prefix. If the member-name does not contain prefix, result is 0.
+ * @param[out] is_meta_p Pointer to the metadata flag, set to 1 if the member-name contains \@, 0 otherwise.
+ */
+void lyd_parser_parse_name(const char *value, uint32_t value_len, const char **name_p, uint32_t *name_len_p,
+        const char **prefix_p, uint32_t *prefix_len_p, ly_bool *is_meta_p);
+
+/**
+ * @brief Join the forward-referencing metadata with their target data nodes.
+ *
+ * Note that forward-referencing metadata are allowed only for leafs/leaf-lists.
+ *
+ * @param[in] lydctx Data parser context.
+ * @param[in,out] first_p Pointer to the first sibling node variable (top-level or in a particular parent node)
+ * as a starting point to search for the metadata's target data node
+ * @param[in,out] parsed Optional set with all the parsed siblings.
+ * @return LY_SUCCESS on success;
+ * @return LY_EVALID in case there are some metadata with unresolved target data node instance.
+ */
+LY_ERR lyd_parser_metadata_finish(struct lyd_ctx *lydctx, struct lyd_node **first_p, struct ly_set *parsed);
+
+/**
+ * @brief Finish parsing a newly created node.
+ *
+ * @param[in] lydctx Data parser.
+ * @param[in] parsed Optional set with all parsed nodes.
+ * @param[in] node Parsed node, may be NULL in some cases.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parser_subtree_node_finish(struct lyd_ctx *lydctx, struct ly_set *parsed, struct lyd_node *node);
 
 /**
  * @brief Wrapper around ::lyd_create_term() for data parsers.
