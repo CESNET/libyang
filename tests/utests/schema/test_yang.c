@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief unit tests for YANG module parser and printer
  *
- * Copyright (c) 2018 - 2022 CESNET, z.s.p.o.
+ * Copyright (c) 2018 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -598,7 +598,7 @@ test_module(void **state)
     /* Trailing Garbage and Base Syntax */
     TEST_MOD(UTEST_LYCTX, "module tg1 { namespace urn:x; prefix x; } module q { namespace urn:q; prefix q; }", LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"tg1\" failed.", NULL, 0);
-    CHECK_LOG_CTX("Trailing garbage \"module q { name...\" after module, expected end-of-input.", NULL, 1);
+    CHECK_LOG_CTX("Trailing garbage \"module q {...\" after module, expected end-of-input.", NULL, 1);
     TEST_MOD(UTEST_LYCTX, "prefix name { }", LY_EVALID);
     CHECK_LOG_CTX("Invalid keyword \"prefix\", expected \"module\" or \"submodule\".", NULL, 1);
 
@@ -622,7 +622,7 @@ test_module(void **state)
     TEST_SUBMOD(UTEST_LYCTX, "submodule subname { belongs-to parent { prefix p; } } module q {}", LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"parent\" failed.", NULL, 0);
     CHECK_LOG_CTX("Parsing submodule \"subname\" failed.", NULL, 0);
-    CHECK_LOG_CTX("Trailing garbage \"module q {}\" after submodule, expected end-of-input.", NULL, 1);
+    CHECK_LOG_CTX("Trailing garbage \"module q {...\" after submodule, expected end-of-input.", NULL, 1);
     TEST_SUBMOD(UTEST_LYCTX, "prefix subname { belongs-to parent { prefix p; } }", LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"parent\" failed.", NULL, 0);
     CHECK_LOG_CTX("Parsing submodule \"subname\" failed.", NULL, 0);
@@ -1524,6 +1524,114 @@ test_value(void **state)
     CHECK_LOG_CTX("Invalid value \"-0\" of \"position\".", NULL, 1);
 }
 
+static void
+test_bound_input(void **state)
+{
+    struct ly_ctx *ctx = UTEST_LYCTX;
+    struct ly_in *in;
+    const char *yang, *yang_trailing;
+
+    /* valid */
+    yang =
+            "module test {"
+            " namespace \"urn:test\";"
+            " prefix t;"
+            " container elem1 {"
+            "   leaf elem2 {"
+            "     type string;"
+            "   }"
+            " }"
+            "}";
+    yang_trailing =
+            "module test {"
+            " namespace \"urn:test\";"
+            " prefix t;"
+            " container elem1 {"
+            "   leaf elem2 {"
+            "     type string;"
+            "   }"
+            " }"
+            "} leaf more_data {string;}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(yang_trailing, strlen(yang), &in));
+    assert_int_equal(LY_SUCCESS, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
+    ly_in_free(in, 0);
+
+    /* invalid */
+    yang =
+            "module test {"
+            " namespace \"urn:test\";"
+            " prefix t;"
+            " container elem1 {"
+            "   leaf elem2 {"
+            "     type string;"
+            "   }"
+            " }";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(yang, strlen(yang), &in));
+    assert_int_equal(LY_EVALID, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Parsing module \"test\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    yang =
+            "module test {"
+            " namespace \"urn:test\";"
+            " prefix t;"
+            " container elem1 {"
+            "   leaf elem2 {"
+            "     type string";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(yang, strlen(yang), &in));
+    assert_int_equal(LY_EVALID, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Parsing module \"test\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    yang =
+            "module test {"
+            " namespace \"urn:test\";"
+            " prefix t;"
+            " container elem1 {"
+            "   leaf elem2 {"
+            "     type st";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(yang, strlen(yang), &in));
+    assert_int_equal(LY_EVALID, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Parsing module \"test\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    yang =
+            "module test {"
+            " namespace \"urn:test\";"
+            " prefix t;"
+            " container elem1 {"
+            "   leaf elem2 {";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(yang, strlen(yang), &in));
+    assert_int_equal(LY_EVALID, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Parsing module \"test\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    yang =
+            "module test {"
+            " namespace \"urn:test\";"
+            " prefix t;"
+            " container elem1 {"
+            "   le";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(yang, strlen(yang), &in));
+    assert_int_equal(LY_EVALID, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Parsing module \"test\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+
+    yang =
+            "module test {"
+            " namespace \"urn:t";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory_chunk(yang, strlen(yang), &in));
+    assert_int_equal(LY_EVALID, lys_parse(ctx, in, LYS_IN_YANG, NULL, NULL));
+    ly_in_free(in, 0);
+    CHECK_LOG_CTX("Parsing module \"test\" failed.", NULL, 0);
+    CHECK_LOG_CTX("Unexpected end-of-input.", NULL, 1);
+}
+
 int
 main(void)
 {
@@ -1552,6 +1660,7 @@ main(void)
         UTEST(test_augment),
         UTEST(test_when),
         UTEST(test_value),
+        UTEST(test_bound_input),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

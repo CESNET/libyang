@@ -217,6 +217,27 @@ struct lyd_ctx_ext_val {
 void lyd_ctx_free(struct lyd_ctx *ctx);
 
 /**
+ * @brief Match a YANG keyword.
+ *
+ * @param[in] ctx Context for logging.
+ * @param[in] in Input structure.
+ * @param[out] kw YANG keyword value.
+ * @param[in,out] indent Pointer to the counter of current position on the line for YANG indentation (optional).
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_match_kw(const struct ly_ctx *ctx, struct ly_in *in, enum ly_stmt *kw, uint64_t *indent);
+
+/**
+ * @brief Check for no trailing characters after (sub)module parsing.
+ *
+ * @param[in] ctx Context for logging.
+ * @param[in] in Input structure.
+ * @param[in] is_submod Set if a submodule was parsed, otherwise a module.
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_parser_check_trailing(const struct ly_ctx *ctx, struct ly_in *in, ly_bool is_submod);
+
+/**
  * @brief Parse submodule from YANG data.
  * @param[in,out] context Parser context.
  * @param[in] ly_ctx Context of YANG schemas.

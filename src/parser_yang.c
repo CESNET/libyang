@@ -58,7 +58,7 @@ struct lys_glob_unres;
  * @param[in] CTX yang parser context to update its indent value.
  * @param[in] COUNT number of items for which the DATA pointer is supposed to move on.
  */
-#define MOVE_INPUT(CTX, COUNT) ly_in_skip((CTX)->in, COUNT);(CTX)->indent+=COUNT
+#define MOVE_INPUT(CTX, COUNT) (CTX)->in->current += COUNT; (CTX)->indent += COUNT
 
 /**
  * @brief Loop through all substatements. Starts a for loop and ::YANG_READ_SUBSTMT_NEXT_ITER must be used at its end.
@@ -116,6 +116,56 @@ static LY_ERR parse_list(struct lysp_yang_ctx *ctx, struct lysp_node *parent, st
 static LY_ERR parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node_grp **groupings);
 
 /**
+ * @brief Get a UTF8 character.
+ *
+ * Does NOT move the input.
+ *
+ * @param[in] yangctx YANG parser.
+ * @param[out] utf8_char Parsed UTF8 character.
+ * @param[out] bytes_read Size of @p utf8_char.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+yang_get_utf8(struct lysp_yang_ctx *yangctx, uint32_t *utf8_char, uint32_t *bytes_read)
+{
+    const char *input;
+
+    if (!ly_in_check_read(yangctx->in, 4)) {
+        /* can use input */
+        input = yangctx->in->current;
+    } else if (!ly_in_check_read(yangctx->in, 3)) {
+        /* only 3 chars left */
+        memcpy(utf8_char, yangctx->in->current, 3);
+        input = (void *)utf8_char;
+    } else if (!ly_in_check_read(yangctx->in, 2)) {
+        /* only 2 chars left */
+        memcpy(utf8_char, yangctx->in->current, 2);
+        input = (void *)utf8_char;
+    } else if (!ly_in_check_read(yangctx->in, 1)) {
+        /* only 1 char left */
+        memcpy(utf8_char, yangctx->in->current, 1);
+        input = (void *)utf8_char;
+    } else {
+        /* EOF */
+        LOGVAL_PARSER(yangctx, LY_VCODE_EOF);
+        return LY_EVALID;
+    }
+
+    if (ly_getutf8(&input, utf8_char, bytes_read)) {
+        if (input[0]) {
+            /* invalid character */
+            LOGVAL_PARSER(yangctx, LY_VCODE_INCHAR, input[0]);
+        } else {
+            /* EOF */
+            LOGVAL_PARSER(yangctx, LY_VCODE_EOF);
+        }
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Add another character to dynamic buffer, a low-level function.
  *
  * Enlarge if needed. Updates \p input as well as \p buf_used.
@@ -129,7 +179,7 @@ static LY_ERR parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent
  * @return LY_ERR values.
  */
 static LY_ERR
-buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_t *buf_len, size_t *buf_used)
+buf_add_char(struct ly_ctx *ctx, struct ly_in *in, uint32_t len, char **buf, uint32_t *buf_len, uint32_t *buf_used)
 {
 #define BUF_STEP 16;
     if (*buf_len <= (*buf_used) + len) {
@@ -138,9 +188,9 @@ buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_
         LY_CHECK_ERR_RET(!*buf, LOGMEM(ctx), LY_EMEM);
     }
     if (*buf_used) {
-        ly_in_read(in, &(*buf)[*buf_used], len);
+        LY_CHECK_ERR_RET(ly_in_read(in, &(*buf)[*buf_used], len), LOGINT(ctx), LY_EINT);
     } else {
-        ly_in_read(in, *buf, len);
+        LY_CHECK_ERR_RET(ly_in_read(in, *buf, len), LOGINT(ctx), LY_EINT);
     }
 
     (*buf_used) += len;
@@ -166,8 +216,8 @@ buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_
  * @return LY_ERR values.
  */
 static LY_ERR
-buf_store_char(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, size_t *word_len,
-        char **word_b, size_t *buf_len, ly_bool need_buf, uint8_t *prefix)
+buf_store_char(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, uint32_t *word_len,
+        char **word_b, uint32_t *buf_len, ly_bool need_buf, uint8_t *prefix)
 {
     uint32_t c, len;
 
@@ -175,9 +225,7 @@ buf_store_char(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, size
     assert(!need_buf || (need_buf && word_b));
 
     /* get UTF8 code point (and number of bytes coding the character) */
-    LY_CHECK_ERR_RET(ly_getutf8(&ctx->in->current, &c, &len),
-            LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[-len]), LY_EVALID);
-    ctx->in->current -= len;
+    LY_CHECK_RET(yang_get_utf8(ctx, &c, &len));
     if (c == '\n') {
         ctx->indent = 0;
         LY_IN_NEW_LINE(ctx->in);
@@ -231,7 +279,7 @@ buf_store_char(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, size
         }
         /* ... and update the word's length */
         (*word_len) += len;
-        ly_in_skip(ctx->in, len);
+        ctx->in->current += len;
     }
 
     return LY_SUCCESS;
@@ -240,14 +288,14 @@ buf_store_char(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, size
 /**
  * @brief Skip YANG comment in data.
  *
- * @param[in] ctx yang parser context for logging.
+ * @param[in] yangctx YANG parser.
  * @param[in] comment Type of the comment to process:
  *                    1 for a one-line comment,
  *                    2 for a block comment.
  * @return LY_ERR values.
  */
 static LY_ERR
-skip_comment(struct lysp_yang_ctx *ctx, uint8_t comment)
+skip_comment(struct lysp_yang_ctx *yangctx, uint8_t comment)
 {
     /* internal statuses: */
 #define COMMENT_NO        0 /* comment ended */
@@ -255,45 +303,64 @@ skip_comment(struct lysp_yang_ctx *ctx, uint8_t comment)
 #define COMMENT_BLOCK     2 /* in block comment */
 #define COMMENT_BLOCK_END 3 /* in block comment with last read character '*' */
 
-    while (ctx->in->current[0] && comment) {
-        switch (comment) {
-        case COMMENT_LINE:
-            if (ctx->in->current[0] == '\n') {
-                comment = COMMENT_NO;
-                LY_IN_NEW_LINE(ctx->in);
-            }
+    assert((comment == COMMENT_LINE) || (comment == COMMENT_BLOCK));
+
+    ly_bool is_eof = 0;
+
+    do {
+        /* check next char */
+        if (ly_in_check_read(yangctx->in, 1)) {
+            is_eof = 1;
             break;
-        case COMMENT_BLOCK:
-            if (ctx->in->current[0] == '*') {
-                comment = COMMENT_BLOCK_END;
-            } else if (ctx->in->current[0] == '\n') {
-                LY_IN_NEW_LINE(ctx->in);
-            }
-            break;
-        case COMMENT_BLOCK_END:
-            if (ctx->in->current[0] == '/') {
+        }
+
+        /* process next char */
+        switch (yangctx->in->current[0]) {
+        case '\0':
+            is_eof = 1;
+            goto break_loop;
+        case '\n':
+            if (comment == COMMENT_LINE) {
                 comment = COMMENT_NO;
-            } else if (ctx->in->current[0] != '*') {
-                if (ctx->in->current[0] == '\n') {
-                    LY_IN_NEW_LINE(ctx->in);
-                }
+            } else if (comment == COMMENT_BLOCK_END) {
+                /* not block comment end */
                 comment = COMMENT_BLOCK;
             }
+
+            LY_IN_NEW_LINE(yangctx->in);
+            yangctx->indent = 0;
+            break;
+        case '*':
+            if (comment == COMMENT_BLOCK) {
+                comment = COMMENT_BLOCK_END;
+            }
+
+            ++yangctx->indent;
+            break;
+        case '/':
+            if (comment == COMMENT_BLOCK_END) {
+                comment = COMMENT_NO;
+            }
+
+            ++yangctx->indent;
             break;
         default:
-            LOGINT_RET(PARSER_CTX(ctx));
+            if (comment == COMMENT_BLOCK_END) {
+                /* not block comment end */
+                comment = COMMENT_BLOCK;
+            }
+
+            ++yangctx->indent;
+            break;
         }
 
-        if (ctx->in->current[0] == '\n') {
-            ctx->indent = 0;
-        } else {
-            ++ctx->indent;
-        }
-        ++ctx->in->current;
-    }
+        /* next char */
+        ++yangctx->in->current;
+    } while (comment);
 
-    if (!ctx->in->current[0] && (comment >= COMMENT_BLOCK)) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Unexpected end-of-input, non-terminated comment.");
+break_loop:
+    if (is_eof && (comment >= COMMENT_BLOCK)) {
+        LOGVAL_PARSER(yangctx, LYVE_SYNTAX, "Unexpected end-of-input, non-terminated comment.");
         return LY_EVALID;
     }
 
@@ -303,6 +370,52 @@ skip_comment(struct lysp_yang_ctx *ctx, uint8_t comment)
 #undef COMMENT_LINE
 #undef COMMENT_BLOCK
 #undef COMMENT_BLOCK_END
+}
+
+/**
+ * @brief Skip any redundant characters, namely whitespaces and comments.
+ *
+ * @param[in] yangctx YANG parser.
+ * @return LY_SUCCESS on success.
+ * @return LY_EVALID on invalid comment.
+ */
+static LY_ERR
+skip_redundant_chars(struct lysp_yang_ctx *yangctx)
+{
+    /* read some trailing spaces, new lines, or comments */
+    while (!ly_in_check_read(yangctx->in, 1)) {
+        switch (yangctx->in->current[0]) {
+        case '/':
+            if (!ly_in_check_read(yangctx->in, 2)) {
+                if (yangctx->in->current[1] == '/') {
+                    /* one-line comment */
+                    yangctx->in->current += 2;
+                    LY_CHECK_RET(skip_comment(yangctx, 1));
+                    continue;
+                } else if (yangctx->in->current[1] == '*') {
+                    /* block comment */
+                    yangctx->in->current += 2;
+                    LY_CHECK_RET(skip_comment(yangctx, 2));
+                    continue;
+                }
+            }
+
+            /* not a comment */
+            return LY_SUCCESS;
+        case '\n':
+            LY_IN_NEW_LINE(yangctx->in);
+        /* fallthrough */
+        case ' ':
+        case '\r':
+        case '\t':
+            ++yangctx->in->current;
+            break;
+        default:
+            return LY_SUCCESS;
+        }
+    }
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -322,7 +435,7 @@ skip_comment(struct lysp_yang_ctx *ctx, uint8_t comment)
  */
 static LY_ERR
 buf_store_char_replaced_input(struct lysp_yang_ctx *ctx, enum yang_arg arg, const char *tmp_input, char **word_p,
-        char **word_b, size_t *word_len, size_t *buf_len)
+        char **word_b, uint32_t *word_len, uint32_t *buf_len)
 {
     LY_ERR rc = LY_SUCCESS;
     const char *c, *s;
@@ -355,16 +468,15 @@ buf_store_char_replaced_input(struct lysp_yang_ctx *ctx, enum yang_arg arg, cons
  * @return LY_ERR values.
  */
 static LY_ERR
-read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char **word_b,
-        size_t *word_len, size_t *buf_len)
+read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char **word_b, uint32_t *word_len, uint32_t *buf_len)
 {
     /* string parsing status: */
-#define STRING_ENDED 0 /* string ended */
-#define STRING_SINGLE_QUOTED 1 /* string with ' */
-#define STRING_DOUBLE_QUOTED 2 /* string with " */
-#define STRING_DOUBLE_QUOTED_ESCAPED 3 /* string with " with last character \ */
-#define STRING_PAUSED_NEXTSTRING     4 /* string finished, now skipping whitespaces looking for + */
-#define STRING_PAUSED_CONTINUE       5 /* string continues after +, skipping whitespaces */
+#define STRING_ENDED 0          /* string ended */
+#define STRING_SINGLE_QUOTED 1  /* string with ' */
+#define STRING_DOUBLE_QUOTED 2  /* string with " */
+#define STRING_DOUBLE_QUOTED_ESCAPED 3  /* string with " with last character \ */
+#define STRING_PAUSED_NEXTSTRING     4  /* string finished, now skipping whitespaces looking for + */
+#define STRING_PAUSED_CONTINUE       5  /* string continues after +, skipping whitespaces */
 
     uint8_t string;
     uint64_t block_indent = 0, current_indent = 0;
@@ -372,6 +484,7 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
     uint8_t prefix = 0;
     uint64_t trailing_ws = 0; /* current number of stored trailing whitespace characters */
 
+    /* first char checked */
     if (ctx->in->current[0] == '\"') {
         string = STRING_DOUBLE_QUOTED;
         current_indent = block_indent = ctx->indent + 1;
@@ -381,7 +494,13 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
     }
     MOVE_INPUT(ctx, 1);
 
-    while (ctx->in->current[0] && string) {
+    while (string) {
+        if (ly_in_check_read(ctx->in, 1) || !ctx->in->current[0]) {
+            /* EOF */
+            LOGVAL_PARSER(ctx, LY_VCODE_EOF);
+            return LY_EVALID;
+        }
+
         switch (string) {
         case STRING_SINGLE_QUOTED:
             if (ctx->in->current[0] == '\'') {
@@ -449,7 +568,8 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
                 break;
             case '\r':
                 /* newline may be escaped */
-                if ((ctx->in->current[1] == '\n') || !strncmp(&ctx->in->current[1], "\\n", 2)) {
+                if ((!ly_in_check_read(ctx->in, 2) && (ctx->in->current[1] == '\n')) ||
+                        (!ly_in_check_read(ctx->in, 3) && !strncmp(&ctx->in->current[1], "\\n", 2))) {
                     /* skip this character, do not store it */
                     ++ctx->in->current;
                 } /* else just store '\n' instead */
@@ -524,11 +644,13 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
             switch (ctx->in->current[0]) {
             case '+':
                 /* string continues */
+                MOVE_INPUT(ctx, 1);
                 string = STRING_PAUSED_CONTINUE;
                 need_buf = 1;
                 break;
             case '\r':
-                if (ctx->in->current[1] != '\n') {
+                /* processing only "\r\n" */
+                if (ly_in_check_read(ctx->in, 2) || (ctx->in->current[1] != '\n')) {
                     LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[0]);
                     return LY_EVALID;
                 }
@@ -536,35 +658,39 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
             /* fallthrough */
             case '\n':
                 LY_IN_NEW_LINE(ctx->in);
-            /* fall through */
+            /* fallthrough */
             case ' ':
             case '\t':
                 /* just skip */
+                MOVE_INPUT(ctx, 1);
                 break;
             case '/':
-                if (ctx->in->current[1] == '/') {
-                    /* one-line comment */
-                    MOVE_INPUT(ctx, 2);
-                    LY_CHECK_RET(skip_comment(ctx, 1));
-                    continue;
-                } else if (ctx->in->current[1] == '*') {
-                    /* block comment */
-                    MOVE_INPUT(ctx, 2);
-                    LY_CHECK_RET(skip_comment(ctx, 2));
-                    continue;
+                if (!ly_in_check_read(ctx->in, 2)) {
+                    if (ctx->in->current[1] == '/') {
+                        /* one-line comment */
+                        MOVE_INPUT(ctx, 2);
+                        LY_CHECK_RET(skip_comment(ctx, 1));
+                        continue;
+                    } else if (ctx->in->current[1] == '*') {
+                        /* block comment */
+                        MOVE_INPUT(ctx, 2);
+                        LY_CHECK_RET(skip_comment(ctx, 2));
+                        continue;
+                    }
                 }
             /* not a comment after all */
             /* fallthrough */
             default:
                 /* string is finished */
-                goto string_end;
+                string = STRING_ENDED;
+                break;
             }
-            MOVE_INPUT(ctx, 1);
             break;
         case STRING_PAUSED_CONTINUE:
             switch (ctx->in->current[0]) {
             case '\r':
-                if (ctx->in->current[1] != '\n') {
+                /* processing only "\r\n" */
+                if (ly_in_check_read(ctx->in, 2) || (ctx->in->current[1] != '\n')) {
                     LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[0]);
                     return LY_EVALID;
                 }
@@ -572,7 +698,7 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
             /* fallthrough */
             case '\n':
                 LY_IN_NEW_LINE(ctx->in);
-            /* fall through */
+            /* fallthrough */
             case ' ':
             case '\t':
                 /* skip */
@@ -587,16 +713,18 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
                 MOVE_INPUT(ctx, 1);
                 break;
             case '/':
-                if (ctx->in->current[1] == '/') {
-                    /* one-line comment */
-                    MOVE_INPUT(ctx, 2);
-                    LY_CHECK_RET(skip_comment(ctx, 1));
-                    break;
-                } else if (ctx->in->current[1] == '*') {
-                    /* block comment */
-                    MOVE_INPUT(ctx, 2);
-                    LY_CHECK_RET(skip_comment(ctx, 2));
-                    break;
+                if (!ly_in_check_read(ctx->in, 2)) {
+                    if (ctx->in->current[1] == '/') {
+                        /* one-line comment */
+                        MOVE_INPUT(ctx, 2);
+                        LY_CHECK_RET(skip_comment(ctx, 1));
+                        break;
+                    } else if (ctx->in->current[1] == '*') {
+                        /* block comment */
+                        MOVE_INPUT(ctx, 2);
+                        LY_CHECK_RET(skip_comment(ctx, 2));
+                        break;
+                    }
                 }
             /* not a comment after all */
             /* fallthrough */
@@ -611,7 +739,6 @@ read_qstring(struct lysp_yang_ctx *ctx, enum yang_arg arg, char **word_p, char *
         }
     }
 
-string_end:
     if ((arg <= Y_PREF_IDENTIF_ARG) && !(*word_len)) {
         /* empty identifier */
         LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Statement argument is required.");
@@ -641,11 +768,11 @@ string_end:
  * @return LY_ERR values.
  */
 static LY_ERR
-get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char **word_p,
-        char **word_b, size_t *word_len)
+get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char **word_p, char **word_b,
+        uint32_t *word_len)
 {
     LY_ERR ret;
-    size_t buf_len = 0;
+    uint32_t buf_len = 0;
     uint8_t prefix = 0;
     ly_bool str_end = 0;
     int comment;
@@ -658,7 +785,19 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
 
     *word_len = 0;
     while (!str_end) {
+        if (ly_in_check_read(ctx->in, 1)) {
+            /* unexpected EOF */
+            LOGVAL_PARSER(ctx, LY_VCODE_EOF);
+            ret = LY_EVALID;
+            goto error;
+        }
+
         switch (ctx->in->current[0]) {
+        case '\0':
+            /* unexpected EOF */
+            LOGVAL_PARSER(ctx, LY_VCODE_EOF);
+            ret = LY_EVALID;
+            goto error;
         case '\'':
         case '\"':
             if (*word_len) {
@@ -681,21 +820,21 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
             break;
         case '/':
             comment = 0;
-            if (ctx->in->current[1] == '/') {
-                /* one-line comment */
-                comment = 1;
-            } else if (ctx->in->current[1] == '*') {
-                /* block comment */
-                comment = 2;
-            } else {
-                /* not a comment after all */
-                LY_CHECK_GOTO(ret = buf_store_char(ctx, arg, word_p, word_len, word_b, &buf_len, 0, &prefix), error);
+            if (!ly_in_check_read(ctx->in, 2)) {
+                if (ctx->in->current[1] == '/') {
+                    /* one-line comment */
+                    comment = 1;
+                } else if (ctx->in->current[1] == '*') {
+                    /* block comment */
+                    comment = 2;
+                }
             }
 
             if (comment) {
                 if (*word_len) {
                     /* invalid comment sequence (RFC 7950 sec. 6.1.3.) */
-                    LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Invalid comment sequence \"%.2s\" in an unquoted string.", ctx->in->current);
+                    LOGVAL_PARSER(ctx, LYVE_SYNTAX, "Invalid comment sequence \"%.2s\" in an unquoted string.",
+                            ctx->in->current);
                     ret = LY_EVALID;
                     goto error;
                 }
@@ -703,6 +842,9 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
                 /* skip the comment */
                 MOVE_INPUT(ctx, 2);
                 LY_CHECK_GOTO(ret = skip_comment(ctx, comment), error);
+            } else {
+                /* not a comment after all */
+                LY_CHECK_GOTO(ret = buf_store_char(ctx, arg, word_p, word_len, word_b, &buf_len, 0, &prefix), error);
             }
             break;
         case ' ':
@@ -725,7 +867,7 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
             ++ctx->in->current;
             break;
         case '\r':
-            if (ctx->in->current[1] != '\n') {
+            if (ly_in_check_read(ctx->in, 2) || (ctx->in->current[1] != '\n')) {
                 LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[0]);
                 ret = LY_EVALID;
                 goto error;
@@ -761,11 +903,6 @@ get_argument(struct lysp_yang_ctx *ctx, enum yang_arg arg, uint16_t *flags, char
                     "unquoted string character, optsep, semicolon or opening brace");
             ret = LY_EVALID;
             goto error;
-        case '\0':
-            /* unexpected EOF */
-            LOGVAL_PARSER(ctx, LY_VCODE_EOF);
-            ret = LY_EVALID;
-            goto error;
         default:
             LY_CHECK_GOTO(ret = buf_store_char(ctx, arg, word_p, word_len, word_b, &buf_len, 0, &prefix), error);
             break;
@@ -798,11 +935,11 @@ error:
  * @return LY_ERR values.
  */
 static LY_ERR
-get_keyword(struct lysp_yang_ctx *ctx, enum ly_stmt *kw, char **word_p, size_t *word_len)
+get_keyword(struct lysp_yang_ctx *ctx, enum ly_stmt *kw, char **word_p, uint32_t *word_len)
 {
     uint8_t prefix;
     const char *word_start;
-    uint32_t len;
+    uint32_t len, c;
 
     if (word_p) {
         *word_p = NULL;
@@ -810,9 +947,15 @@ get_keyword(struct lysp_yang_ctx *ctx, enum ly_stmt *kw, char **word_p, size_t *
     }
 
     /* first skip "optsep", comments */
-    while (ctx->in->current[0]) {
+    while (!ly_in_check_read(ctx->in, 1)) {
         switch (ctx->in->current[0]) {
         case '/':
+            if (ly_in_check_read(ctx->in, 2)) {
+                /* EOF */
+                LOGVAL_PARSER(ctx, LY_VCODE_EOF);
+                return LY_EVALID;
+            }
+
             if (ctx->in->current[1] == '/') {
                 /* one-line comment */
                 MOVE_INPUT(ctx, 2);
@@ -842,7 +985,7 @@ get_keyword(struct lysp_yang_ctx *ctx, enum ly_stmt *kw, char **word_p, size_t *
             break;
         case '\r':
             /* possible CRLF endline */
-            if (ctx->in->current[1] == '\n') {
+            if (!ly_in_check_read(ctx->in, 2) && (ctx->in->current[1] == '\n')) {
                 break;
             }
         /* fallthrough */
@@ -851,12 +994,12 @@ get_keyword(struct lysp_yang_ctx *ctx, enum ly_stmt *kw, char **word_p, size_t *
             goto keyword_start;
         }
 
-        ly_in_skip(ctx->in, 1);
+        ++ctx->in->current;
     }
 
 keyword_start:
     word_start = ctx->in->current;
-    *kw = lysp_match_kw(ctx->in, &ctx->indent);
+    LY_CHECK_RET(lysp_match_kw(PARSER_CTX(ctx), ctx->in, kw, &ctx->indent));
 
     if (*kw == LY_STMT_SYNTAX_SEMICOLON) {
         goto success;
@@ -874,9 +1017,15 @@ keyword_start:
 
     if (*kw != LY_STMT_NONE) {
         /* make sure we have the whole keyword */
+        if (ly_in_check_read(ctx->in, 1)) {
+            LOGVAL_PARSER(ctx, LY_VCODE_INSTREXP, (int)(ctx->in->current - word_start), word_start,
+                    "a keyword followed by a separator");
+            return LY_EVALID;
+        }
+
         switch (ctx->in->current[0]) {
         case '\r':
-            if (ctx->in->current[1] != '\n') {
+            if (ly_in_check_read(ctx->in, 2) || (ctx->in->current[1] != '\n')) {
                 LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[0]);
                 return LY_EVALID;
             }
@@ -914,21 +1063,20 @@ keyword_start:
         prefix = 0;
 
 extension:
-        while (ctx->in->current[0] && (ctx->in->current[0] != ' ') && (ctx->in->current[0] != '\t') &&
-                (ctx->in->current[0] != '\n') && (ctx->in->current[0] != '\r') && (ctx->in->current[0] != '{') &&
-                (ctx->in->current[0] != ';')) {
-            uint32_t c = 0;
+        while (1) {
+            /* next char */
+            LY_CHECK_RET(yang_get_utf8(ctx, &c, &len));
+            if ((c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '{') || (c == ';')) {
+                break;
+            }
 
-            LY_CHECK_ERR_RET(ly_getutf8(&ctx->in->current, &c, &len),
-                    LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, ctx->in->current[-len]), LY_EVALID);
-            ++ctx->indent;
-            /* check character validity */
+            /* check character is valid */
             LY_CHECK_RET(lysp_check_identifierchar((struct lysp_ctx *)ctx, c,
-                    ctx->in->current - len == word_start ? 1 : 0, &prefix));
-        }
-        if (!ctx->in->current[0]) {
-            LOGVAL_PARSER(ctx, LY_VCODE_EOF);
-            return LY_EVALID;
+                    (ctx->in->current == word_start) ? 1 : 0, &prefix));
+
+            /* move input */
+            ctx->in->current += len;
+            ++ctx->indent;
         }
 
         /* prefix is mandatory for extension instances */
@@ -960,7 +1108,7 @@ success:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_ext_substmt(struct lysp_yang_ctx *ctx, enum ly_stmt kw, char *word, size_t word_len,
+parse_ext_substmt(struct lysp_yang_ctx *ctx, enum ly_stmt kw, char *word, uint32_t word_len,
         struct lysp_stmt **child)
 {
     char *buf;
@@ -1014,12 +1162,12 @@ cleanup:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_ext(struct lysp_yang_ctx *ctx, const char *ext_name, size_t ext_name_len, const void *parent,
+parse_ext(struct lysp_yang_ctx *ctx, const char *ext_name, uint32_t ext_name_len, const void *parent,
         enum ly_stmt parent_stmt, LYA_COUNT_T parent_stmt_index, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     struct lysp_ext_instance *e;
     enum ly_stmt kw;
 
@@ -1089,7 +1237,7 @@ parse_text_field(struct lysp_yang_ctx *ctx, const void *parent, enum ly_stmt par
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     if (*value) {
@@ -1131,7 +1279,7 @@ parse_yangversion(struct lysp_yang_ctx *ctx, struct lysp_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     if (mod->version) {
@@ -1181,7 +1329,7 @@ parse_belongsto(struct lysp_yang_ctx *ctx, struct lysp_submodule *submod)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     if (submod->prefix) {
@@ -1238,7 +1386,7 @@ parse_revisiondate(struct lysp_yang_ctx *ctx, char *rev, struct lysp_ext_instanc
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     if (rev[0]) {
@@ -1288,7 +1436,7 @@ parse_include(struct lysp_yang_ctx *ctx, const char *module_name, struct lysp_in
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_include *inc;
 
@@ -1350,7 +1498,7 @@ parse_import(struct lysp_yang_ctx *ctx, const char *module_prefix, struct lysp_i
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_import *imp;
 
@@ -1410,7 +1558,7 @@ parse_revision(struct lysp_yang_ctx *ctx, struct lysp_revision **revs)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_revision *rev;
 
@@ -1471,7 +1619,7 @@ parse_text_fields(struct lysp_yang_ctx *ctx, enum ly_stmt parent_stmt, const cha
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
     const char **item;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     /* allocate new pointer */
@@ -1517,7 +1665,7 @@ parse_qnames(struct lysp_yang_ctx *ctx, enum ly_stmt parent_stmt, struct lysp_qn
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
     struct lysp_qname *item;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     /* allocate new pointer */
@@ -1560,7 +1708,7 @@ parse_config(struct lysp_yang_ctx *ctx, uint16_t *flags, struct lysp_ext_instanc
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     if (*flags & LYS_CONFIG_MASK) {
@@ -1611,7 +1759,7 @@ parse_mandatory(struct lysp_yang_ctx *ctx, uint16_t *flags, struct lysp_ext_inst
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     if (*flags & LYS_MAND_MASK) {
@@ -1662,7 +1810,7 @@ parse_restr(struct lysp_yang_ctx *ctx, enum ly_stmt restr_kw, struct lysp_restr 
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     /* get value */
@@ -1736,7 +1884,7 @@ parse_status(struct lysp_yang_ctx *ctx, uint16_t *flags, struct lysp_ext_instanc
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     if (*flags & LYS_STATUS_MASK) {
@@ -1788,7 +1936,7 @@ parse_when(struct lysp_yang_ctx *ctx, struct lysp_when **when_p)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_when *when;
 
@@ -1850,7 +1998,7 @@ parse_any(struct lysp_yang_ctx *ctx, enum ly_stmt any_kw, struct lysp_node *pare
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     struct lysp_node_anydata *any;
     enum ly_stmt kw;
 
@@ -1918,7 +2066,7 @@ parse_type_enum_value_pos(struct lysp_yang_ctx *ctx, enum ly_stmt val_kw, struct
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word, *ptr;
-    size_t word_len;
+    uint32_t word_len;
     long long num = 0;
     unsigned long long unum = 0;
     enum ly_stmt kw;
@@ -1956,7 +2104,7 @@ parse_type_enum_value_pos(struct lysp_yang_ctx *ctx, enum ly_stmt val_kw, struct
         }
     }
     /* we have not parsed the whole argument */
-    if ((size_t)(ptr - word) != word_len) {
+    if ((uint32_t)(ptr - word) != word_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, lyplg_ext_stmt2str(val_kw));
         ret = LY_EVALID;
         goto cleanup;
@@ -2004,7 +2152,7 @@ parse_type_enum(struct lysp_yang_ctx *ctx, enum ly_stmt enum_kw, struct lysp_typ
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_type_enum *enm;
 
@@ -2077,7 +2225,7 @@ parse_type_fracdigits(struct lysp_yang_ctx *ctx, struct lysp_type *type)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word, *ptr;
-    size_t word_len;
+    uint32_t word_len;
     unsigned long long num;
     enum ly_stmt kw;
 
@@ -2098,7 +2246,7 @@ parse_type_fracdigits(struct lysp_yang_ctx *ctx, struct lysp_type *type)
     errno = 0;
     num = strtoull(word, &ptr, LY_BASE_DEC);
     /* we have not parsed the whole argument */
-    if ((size_t)(ptr - word) != word_len) {
+    if ((uint32_t)(ptr - word) != word_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "fraction-digits");
         ret = LY_EVALID;
         goto cleanup;
@@ -2140,7 +2288,7 @@ parse_type_reqinstance(struct lysp_yang_ctx *ctx, struct lysp_type *type)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     if (type->flags & LYS_SET_REQINST) {
@@ -2190,7 +2338,7 @@ parse_type_pattern_modifier(struct lysp_yang_ctx *ctx, struct lysp_restr *restr)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     if (restr->arg.str[0] == LYSP_RESTR_PATTERN_NACK) {
@@ -2248,7 +2396,7 @@ parse_type_pattern(struct lysp_yang_ctx *ctx, struct lysp_restr **patterns)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_restr *restr;
 
@@ -2324,7 +2472,7 @@ parse_type(struct lysp_yang_ctx *ctx, struct lysp_type *type)
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
     const char *str_path = NULL;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_type *nest_type;
 
@@ -2446,7 +2594,7 @@ parse_leaf(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_node_leaf *leaf;
 
@@ -2532,7 +2680,7 @@ parse_maxelements(struct lysp_yang_ctx *ctx, uint32_t *max, uint16_t *flags, str
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word, *ptr;
-    size_t word_len;
+    uint32_t word_len;
     unsigned long long num;
     enum ly_stmt kw;
 
@@ -2555,7 +2703,7 @@ parse_maxelements(struct lysp_yang_ctx *ctx, uint32_t *max, uint16_t *flags, str
         errno = 0;
         num = strtoull(word, &ptr, LY_BASE_DEC);
         /* we have not parsed the whole argument */
-        if ((size_t)(ptr - word) != word_len) {
+        if ((uint32_t)(ptr - word) != word_len) {
             LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "max-elements");
             ret = LY_EVALID;
             goto cleanup;
@@ -2604,7 +2752,7 @@ parse_minelements(struct lysp_yang_ctx *ctx, uint32_t *min, uint16_t *flags, str
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word, *ptr;
-    size_t word_len;
+    uint32_t word_len;
     unsigned long long num;
     enum ly_stmt kw;
 
@@ -2626,7 +2774,7 @@ parse_minelements(struct lysp_yang_ctx *ctx, uint32_t *min, uint16_t *flags, str
     errno = 0;
     num = strtoull(word, &ptr, LY_BASE_DEC);
     /* we have not parsed the whole argument */
-    if ((size_t)(ptr - word) != word_len) {
+    if ((uint32_t)(ptr - word) != word_len) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, (int)word_len, word, "min-elements");
         ret = LY_EVALID;
         goto cleanup;
@@ -2668,7 +2816,7 @@ parse_orderedby(struct lysp_yang_ctx *ctx, struct lysp_node *llist)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     if (llist->flags & LYS_ORDBY_MASK) {
@@ -2720,7 +2868,7 @@ parse_leaflist(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_node_leaflist *llist;
 
@@ -2809,7 +2957,7 @@ parse_refine(struct lysp_yang_ctx *ctx, struct lysp_refine **refines)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_refine *rf;
 
@@ -2886,7 +3034,7 @@ parse_typedef(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_t
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_tpdf *tpdf;
 
@@ -2967,7 +3115,7 @@ parse_inout(struct lysp_yang_ctx *ctx, enum ly_stmt inout_kw, struct lysp_node *
 {
     LY_ERR ret = LY_SUCCESS;
     char *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     ly_bool input = &((struct lysp_node_action *)parent)->input == inout_p ? 1 : 0;
 
@@ -3044,7 +3192,7 @@ parse_action(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_no
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_node_action *act;
 
@@ -3123,7 +3271,7 @@ parse_notif(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_nod
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_node_notif *notif;
 
@@ -3214,7 +3362,7 @@ parse_grouping(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_node_grp *grp;
 
@@ -3309,7 +3457,7 @@ parse_augment(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_n
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_node_augment *aug;
 
@@ -3403,7 +3551,7 @@ parse_uses(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_node_uses *uses;
 
@@ -3468,7 +3616,7 @@ parse_case(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_node_case *cas;
 
@@ -3551,7 +3699,7 @@ parse_choice(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_no
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_node_choice *choice;
 
@@ -3648,7 +3796,7 @@ parse_container(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp
 {
     LY_ERR ret = 0;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_node_container *cont;
 
@@ -3756,7 +3904,7 @@ parse_list(struct lysp_yang_ctx *ctx, struct lysp_node *parent, struct lysp_node
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_node_list *list;
 
@@ -3875,7 +4023,7 @@ parse_yinelement(struct lysp_yang_ctx *ctx, struct lysp_ext *ext)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     if (ext->flags & LYS_YINELEM_MASK) {
@@ -3926,7 +4074,7 @@ parse_argument(struct lysp_yang_ctx *ctx, struct lysp_ext *ext)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
 
     if (ext->argname) {
@@ -3969,7 +4117,7 @@ parse_extension(struct lysp_yang_ctx *ctx, struct lysp_ext **extensions)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_ext *ex;
 
@@ -4025,7 +4173,7 @@ parse_deviate(struct lysp_yang_ctx *ctx, struct lysp_deviate **deviates)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *word;
-    size_t word_len, dev_mod;
+    uint32_t word_len, dev_mod;
     enum ly_stmt kw;
     struct lysp_deviate *d = NULL;
     struct lysp_deviate_add *d_add = NULL;
@@ -4256,7 +4404,7 @@ parse_deviation(struct lysp_yang_ctx *ctx, struct lysp_deviation **deviations)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_deviation *dev;
 
@@ -4321,7 +4469,7 @@ parse_feature(struct lysp_yang_ctx *ctx, struct lysp_feature **features)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_feature *feat;
 
@@ -4375,7 +4523,7 @@ parse_identity(struct lysp_yang_ctx *ctx, struct lysp_ident **identities)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_ident *ident;
 
@@ -4438,7 +4586,7 @@ parse_module(struct lysp_yang_ctx *ctx, struct lysp_module *mod)
 {
     LY_ERR ret = 0;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw, prev_kw = 0;
     enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
     const struct lysp_submodule *dup;
@@ -4652,7 +4800,7 @@ parse_submodule(struct lysp_yang_ctx *ctx, struct lysp_submodule *submod)
 {
     LY_ERR ret = 0;
     char *buf, *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw, prev_kw = 0;
     enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
     const struct lysp_submodule *dup;
@@ -4846,47 +4994,13 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Skip any redundant characters, namely whitespaces and comments.
- *
- * @param[in] ctx Yang parser context.
- * @return LY_SUCCESS on success.
- * @return LY_EVALID on invalid comment.
- */
-static LY_ERR
-skip_redundant_chars(struct lysp_yang_ctx *ctx)
-{
-    /* read some trailing spaces, new lines, or comments */
-    while (ctx->in->current[0]) {
-        if (!strncmp(ctx->in->current, "//", 2)) {
-            /* one-line comment */
-            ly_in_skip(ctx->in, 2);
-            LY_CHECK_RET(skip_comment(ctx, 1));
-        } else if (!strncmp(ctx->in->current, "/*", 2)) {
-            /* block comment */
-            ly_in_skip(ctx->in, 2);
-            LY_CHECK_RET(skip_comment(ctx, 2));
-        } else if (isspace(ctx->in->current[0])) {
-            /* whitespace */
-            if (ctx->in->current[0] == '\n') {
-                LY_IN_NEW_LINE(ctx->in);
-            }
-            ly_in_skip(ctx->in, 1);
-        } else {
-            break;
-        }
-    }
-
-    return LY_SUCCESS;
-}
-
 LY_ERR
 yang_parse_submodule(struct lysp_yang_ctx **context, struct ly_ctx *ly_ctx, struct lysp_ctx *main_ctx,
         struct ly_in *in, struct lysp_submodule **submod)
 {
     LY_ERR ret = LY_SUCCESS;
     char *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_submodule *mod_p = NULL;
 
@@ -4935,11 +5049,7 @@ yang_parse_submodule(struct lysp_yang_ctx **context, struct ly_ctx *ly_ctx, stru
     /* skip redundant but valid characters at the end */
     ret = skip_redundant_chars(*context);
     LY_CHECK_GOTO(ret, cleanup);
-    if (in->current[0]) {
-        LOGVAL_PARSER(*context, LY_VCODE_TRAILING_SUBMOD, 15, in->current, strlen(in->current) > 15 ? "..." : "");
-        ret = LY_EVALID;
-        goto cleanup;
-    }
+    LY_CHECK_GOTO(ret = lysp_parser_check_trailing(PARSER_CTX(*context), in, 1), cleanup);
 
     mod_p->parsing = 0;
     *submod = mod_p;
@@ -4960,7 +5070,7 @@ yang_parse_module(struct lysp_yang_ctx **context, struct ly_in *in, struct lys_m
 {
     LY_ERR ret = LY_SUCCESS;
     char *word;
-    size_t word_len;
+    uint32_t word_len;
     enum ly_stmt kw;
     struct lysp_module *mod_p = NULL;
 
@@ -5004,11 +5114,7 @@ yang_parse_module(struct lysp_yang_ctx **context, struct ly_in *in, struct lys_m
     /* skip redundant but valid characters at the end */
     ret = skip_redundant_chars(*context);
     LY_CHECK_GOTO(ret, cleanup);
-    if (in->current[0]) {
-        LOGVAL_PARSER(*context, LY_VCODE_TRAILING_MOD, 15, in->current, strlen(in->current) > 15 ? "..." : "");
-        ret = LY_EVALID;
-        goto cleanup;
-    }
+    LY_CHECK_GOTO(ret = lysp_parser_check_trailing(PARSER_CTX(*context), in, 0), cleanup);
 
     mod->parsed = mod_p;
 

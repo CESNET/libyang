@@ -4,7 +4,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief YIN parser.
  *
- * Copyright (c) 2015 - 2024 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2026 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -216,7 +216,7 @@ yin_match_keyword(struct lysp_yin_ctx *ctx, const char *name, size_t name_len, c
 
     LY_CHECK_RET(ly_in_new_memory(name, &in), LY_STMT_NONE);
     start = in->current;
-    kw = lysp_match_kw(in, NULL);
+    LY_CHECK_RET(lysp_match_kw(PARSER_CTX(ctx), in, &kw, NULL), LY_STMT_NONE);
     name = in->current;
     ly_in_free(in, 0);
 
@@ -4004,9 +4004,10 @@ LY_ERR
 yin_parse_submodule(struct lysp_yin_ctx **yin_ctx, struct ly_ctx *ctx, struct lysp_ctx *main_ctx,
         struct ly_in *in, struct lysp_submodule **submod)
 {
-    enum ly_stmt kw = LY_STMT_NONE;
     LY_ERR ret = LY_SUCCESS;
+    enum ly_stmt kw = LY_STMT_NONE;
     struct lysp_submodule *mod_p = NULL;
+    enum LYXML_PARSER_STATUS status;
 
     assert(yin_ctx && ctx && main_ctx && in && submod);
 
@@ -4043,17 +4044,9 @@ yin_parse_submodule(struct lysp_yin_ctx **yin_ctx, struct ly_ctx *ctx, struct ly
     LY_CHECK_GOTO(ret, cleanup);
 
     /* skip possible trailing whitespaces at end of the input */
-    while (isspace(in->current[0])) {
-        if (in->current[0] == '\n') {
-            LY_IN_NEW_LINE(in);
-        }
-        ly_in_skip(in, 1);
-    }
-    if (in->current[0]) {
-        LOGVAL_PARSER((struct lysp_ctx *)*yin_ctx, LY_VCODE_TRAILING_SUBMOD, 15, in->current,
-                strlen(in->current) > 15 ? "..." : "");
-        ret = LY_EVALID;
-        goto cleanup;
+    LY_CHECK_GOTO(ret = lyxml_ctx_peek((*yin_ctx)->xmlctx, &status), cleanup);
+    if (status != LYXML_END) {
+        LY_CHECK_GOTO(ret = lysp_parser_check_trailing(PARSER_CTX(*yin_ctx), in, 1), cleanup);
     }
 
     mod_p->parsing = 0;
@@ -4075,6 +4068,7 @@ yin_parse_module(struct lysp_yin_ctx **yin_ctx, struct ly_in *in, struct lys_mod
     LY_ERR ret = LY_SUCCESS;
     enum ly_stmt kw = LY_STMT_NONE;
     struct lysp_module *mod_p = NULL;
+    enum LYXML_PARSER_STATUS status;
 
     /* create context */
     *yin_ctx = calloc(1, sizeof **yin_ctx);
@@ -4107,17 +4101,9 @@ yin_parse_module(struct lysp_yin_ctx **yin_ctx, struct ly_in *in, struct lys_mod
     LY_CHECK_GOTO(ret, cleanup);
 
     /* skip possible trailing whitespaces at end of the input */
-    while (isspace(in->current[0])) {
-        if (in->current[0] == '\n') {
-            LY_IN_NEW_LINE(in);
-        }
-        ly_in_skip(in, 1);
-    }
-    if (in->current[0]) {
-        LOGVAL_PARSER((struct lysp_ctx *)*yin_ctx, LY_VCODE_TRAILING_MOD, 15, in->current,
-                strlen(in->current) > 15 ? "..." : "");
-        ret = LY_EVALID;
-        goto cleanup;
+    LY_CHECK_GOTO(ret = lyxml_ctx_peek((*yin_ctx)->xmlctx, &status), cleanup);
+    if (status != LYXML_END) {
+        LY_CHECK_GOTO(ret = lysp_parser_check_trailing(PARSER_CTX(*yin_ctx), in, 0), cleanup);
     }
 
     mod->parsed = mod_p;

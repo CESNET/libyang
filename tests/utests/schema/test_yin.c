@@ -3897,7 +3897,7 @@ test_yin_parse_submodule(void **state)
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, mod_a, LYS_IN_YIN, &mod), LY_EVALID);
     CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL, 0);
     CHECK_LOG_CTX("Parsing submodule \"asub\" failed.", NULL, 0);
-    CHECK_LOG_CTX("Trailing garbage \"<submodule name...\" after submodule, expected end-of-input.", NULL, 1);
+    CHECK_LOG_CTX("Trailing garbage \"<submodule...\" after submodule, expected end-of-input.", NULL, 1);
 }
 
 int

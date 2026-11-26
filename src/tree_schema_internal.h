@@ -735,15 +735,6 @@ LY_ERR lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char
 uint8_t lysc_iff_getop(uint8_t *list, size_t pos);
 
 /**
- * @brief match yang keyword
- *
- * @param[in,out] in Input structure, is updated.
- * @param[in,out] indent Pointer to the counter of current position on the line for YANG indentation (optional).
- * @return yang_keyword values.
- */
-enum ly_stmt lysp_match_kw(struct ly_in *in, uint64_t *indent);
-
-/**
  * @brief Generate path of the given node in the requested format.
  *
  * @param[in] node Schema path of this node will be generated.
