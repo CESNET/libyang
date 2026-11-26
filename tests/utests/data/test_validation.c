@@ -1362,6 +1362,8 @@ test_multi_error(void **state)
     CHECK_LOG_CTX_APPTAG("Too few \"ll\" instances.", "/ii:cont/ll", 0, "too-few-elements");
     CHECK_LOG_CTX_APPTAG("l leaf is not left", "/ii:cont/l3", 0, "not-left");
     CHECK_LOG_CTX_APPTAG("Must condition \"../l = 'right'\" not satisfied.", "/ii:cont/l2", 0, "must-violation");
+    CHECK_LOG_CTX_APPTAG("Duplicate instance of \"l\".", "/ii:cont/l", 0, NULL);
+    CHECK_LOG_CTX_APPTAG("Duplicate instance of \"l\".", "/ii:cont/l", 0, NULL);
     CHECK_LOG_CTX_APPTAG("Invalid non-number-encoded uint32 value \"ahoy\".", "/ii:cont/ll", 7, NULL);
 
     /* validation */
@@ -1768,7 +1770,7 @@ test_case(void **state)
             "    \"g7\": \"value_g7\"\n"
             "  }\n"
             "}\n", LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.", "/k:ch/a0", 6);
+    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.", "/k:ch/a0", 0);
 
     CHECK_PARSE_LYD_PARAM(
             "{\n"
@@ -1777,7 +1779,7 @@ test_case(void **state)
             "    \"g0\": \"value_g0\"\n"
             "  }\n"
             "}\n", LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.", "/k:ch/a0", 6);
+    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.", "/k:ch/a0", 0);
 }
 
 static void

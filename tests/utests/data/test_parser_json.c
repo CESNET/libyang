@@ -538,17 +538,17 @@ test_list(void **state)
 
     /* missing keys */
     PARSER_CHECK_ERROR("{ \"a:l1\": [ {\"c\" : 1, \"b\" : \"b\"}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"a\".", "/a:l1[b='b'][c='1']", 1);
+            "List instance is missing its key \"a\".", "/a:l1[b='b'][c='1']", 0);
 
     PARSER_CHECK_ERROR("{ \"a:l1\": [ {\"a\" : \"a\"}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"b\".", "/a:l1[a='a']", 1);
+            "List instance is missing its key \"b\".", "/a:l1[a='a']", 0);
 
     PARSER_CHECK_ERROR("{ \"a:l1\": [ {\"b\" : \"b\", \"a\" : \"a\"}]}", 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"c\".", "/a:l1[a='a'][b='b']", 1);
+            "List instance is missing its key \"c\".", "/a:l1[a='a'][b='b']", 0);
 
     /* key duplicate */
     PARSER_CHECK_ERROR("{ \"a:l1\": [ {\"c\" : 1, \"b\" : \"b\", \"a\" : \"a\", \"c\" : 1}]}", 0, LYD_VALIDATE_PRESENT,
-            tree, LY_EVALID, "Duplicate instance of \"c\".", "/a:l1[a='a'][b='b'][c='1'][c='1']/c", 1);
+            tree, LY_EVALID, "Duplicate instance of \"c\".", "/a:l1[a='a'][b='b'][c='1'][c='1']/c", 0);
 
     /* keys order, in contrast to XML, JSON accepts keys in any order even in strict mode */
     CHECK_PARSE_LYD("{ \"a:l1\": [ {\"d\" : \"d\", \"a\" : \"a\", \"c\" : 1, \"b\" : \"b\"}]}", 0, LYD_VALIDATE_PRESENT, tree);
@@ -682,7 +682,7 @@ test_opaq(void **state)
     /* missing key, no flags */
     data = "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"d\":\"val_d\"}]}";
     PARSER_CHECK_ERROR(data, 0, LYD_VALIDATE_PRESENT, tree, LY_EVALID,
-            "List instance is missing its key \"c\".", "/a:l1[a='val_a'][b='val_b']", 1);
+            "List instance is missing its key \"c\".", "/a:l1[a='val_a'][b='val_b']", 0);
 
     /* opaq flag */
     CHECK_PARSE_LYD(data, LYD_PARSE_OPAQ | LYD_PARSE_ONLY, 0, tree);

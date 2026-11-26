@@ -587,11 +587,12 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
  * @param[in] lydctx JSON data parser context.
  * @param[in,out] first_p Pointer to the first sibling node variable (top-level or in a particular parent node)
  * as a starting point to search for the metadata's target data node
+ * @param[in,out] parsed Optional set to add all the parsed siblings into.
  * @return LY_SUCCESS on success
  * @return LY_EVALID in case there are some metadata with unresolved target data node instance
  */
 static LY_ERR
-lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
+lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p, struct ly_set *parsed)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *node, *attr, *next, *meta_iter;
@@ -730,6 +731,9 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
             /* remove the opaq attr */
             if (attr == (*first_p)) {
                 *first_p = attr->next;
+            }
+            if (parsed) {
+                ly_set_rm(parsed, attr, NULL);
             }
             lyd_free_tree(attr);
         }
@@ -1074,7 +1078,7 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, uint32_t name_
             goto cleanup;
         }
 
-        goto finish;
+        goto cleanup;
     }
 
     while (*status_p == LYJSON_ARRAY) {
@@ -1095,7 +1099,7 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, uint32_t name_
 
         LY_CHECK_GOTO(ret = lyjson_ctx_next(lydctx->jsonctx, status_inner_p), cleanup);
         if (*status_inner_p == LYJSON_ARRAY_CLOSED) {
-            goto finish;
+            goto cleanup;
         }
         assert(*status_inner_p == LYJSON_ARRAY_NEXT);
 
@@ -1117,10 +1121,6 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, uint32_t name_
             *status_p = lyjson_ctx_status(lydctx->jsonctx);
         } while (*status_p == LYJSON_OBJECT_NEXT);
     }
-
-finish:
-    /* finish linking metadata */
-    ret = lydjson_metadata_finish(lydctx, lyd_node_child_p(*node));
 
 cleanup:
     return ret;
@@ -1402,10 +1402,6 @@ lydjson_parse_any(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, co
 
             *status = lyjson_ctx_status(lydctx->jsonctx);
         } while (*status == LYJSON_OBJECT_NEXT);
-
-        /* finish linking metadata */
-        r = lydjson_metadata_finish(lydctx, &((struct lyd_node_any *)*node)->child);
-        LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
     }
 
 cleanup:
@@ -1436,6 +1432,7 @@ lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node
 {
     LY_ERR r, rc = LY_SUCCESS;
     uint32_t prev_parse_opts = lydctx->parse_opts;
+    ly_bool prev_in = 0;
 
     LY_CHECK_RET(*status != LYJSON_OBJECT, LY_ENOT);
 
@@ -1466,9 +1463,9 @@ lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node
         *status = lyjson_ctx_status(lydctx->jsonctx);
     } while (*status == LYJSON_OBJECT_NEXT);
 
-    /* finish linking metadata */
-    r = lydjson_metadata_finish(lydctx, lyd_node_child_p(*node));
-    LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
+    /* do not log line, the child nodes are checked */
+    ly_log_location_revert(0, 0, 1);
+    prev_in = 1;
 
     if (snode->nodetype == LYS_LIST) {
         /* check all keys exist */
@@ -1484,8 +1481,8 @@ lydjson_parse_instance_inner(struct lyd_json_ctx *lydctx, const struct lysc_node
 
 cleanup:
     lydctx->parse_opts = prev_parse_opts;
-    if (rc && (!(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
-        lyd_parser_node_free(first_p, node);
+    if (prev_in) {
+        ly_log_location(NULL, NULL, lydctx->jsonctx->in);
     }
     return rc;
 }
@@ -1621,6 +1618,47 @@ cleanup:
 }
 
 /**
+ * @brief Finish parsing a newly created node.
+ *
+ * @param[in] lydctx JSON data parser.
+ * @param[in] parsed Optional set with all parsed nodes.
+ * @param[in] node Parsed node, may be NULL in some cases.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lydjson_subtree_node_finish(struct lyd_json_ctx *lydctx, struct ly_set *parsed, struct lyd_node *node)
+{
+    struct lyd_node **child_p;
+
+    if (!node) {
+        /* no node actually parsed */
+        return LY_SUCCESS;
+    }
+
+    /* remember a successfully parsed node */
+    if (parsed) {
+        ly_set_add(parsed, node, 1, NULL);
+    }
+
+    /* finish metadata linking in the children in case they were parsed before the target nodes */
+    if (node->schema && (node->schema->nodetype & LYD_NODE_ANY)) {
+        child_p = &((struct lyd_node_any *)node)->child;
+    } else {
+        child_p = lyd_node_child_p(node);
+    }
+    if (child_p) {
+        LY_CHECK_RET(lydjson_metadata_finish(lydctx, child_p, parsed));
+    }
+
+    /* remember OP node */
+    if (node->schema && (node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
+        lydctx->op_node = node;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Parse JSON subtree. All leaf-list and list instances of a node are considered one subtree.
  *
  * @param[in] lydctx JSON data parser context.
@@ -1635,7 +1673,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
     LY_ERR r, rc = LY_SUCCESS;
     enum LYJSON_PARSER_STATUS status = lyjson_ctx_status(lydctx->jsonctx);
     const char *name, *prefix = NULL, *expected = NULL;
-    uint32_t name_len, prefix_len = 0;
+    uint32_t name_len, prefix_len = 0, i;
     ly_bool is_meta = 0;
     const struct lysc_node *snode = NULL;
     struct lysc_ext_instance *ext = NULL;
@@ -1795,6 +1833,9 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
                         break;
                     }
 
+                    /* finish parsing the previous node */
+                    LY_CHECK_GOTO(rc = lydjson_subtree_node_finish(lydctx, parsed, node), cleanup)
+
                     r = lydjson_parse_instance(lydctx, parent, first_p, snode, ext, name, name_len, prefix, prefix_len,
                             &status, &node);
                     if (r == LY_ENOT) {
@@ -1832,11 +1873,6 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node *parent, struct l
                 goto representation_error;
             }
             LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
-
-            if (snode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
-                /* rememeber the RPC/action/notification */
-                lydctx->op_node = node;
-            }
             break;
         }
     }
@@ -1846,10 +1882,8 @@ node_parsed:
     r = lyjson_ctx_next(lydctx->jsonctx, &status);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
-    /* rememeber a successfully parsed node */
-    if (parsed && node) {
-        ly_set_add(parsed, node, 1, NULL);
-    }
+    /* finish node parsing */
+    LY_CHECK_GOTO(rc = lydjson_subtree_node_finish(lydctx, parsed, node), cleanup);
 
     /* success */
     goto cleanup;
@@ -1868,6 +1902,9 @@ representation_error:
 cleanup:
     free(value);
     if (rc && (!(lydctx->val_opts & LYD_VALIDATE_MULTI_ERROR) || (rc != LY_EVALID))) {
+        if (parsed && node && ly_set_contains(parsed, node, &i)) {
+            ly_set_rm_index(parsed, i, NULL);
+        }
         lyd_parser_node_free(first_p, &node);
     }
     return rc;
@@ -2055,9 +2092,7 @@ lyd_parse_json(const struct ly_ctx *ctx, struct lyd_node *parent, const struct l
         r = lyd_parse_json_bare_value(lydctx, &status, parent, schema, first_p);
         LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
     } else {
-        /* parse JSON object */
-
-        /* read subtree(s) */
+        /* parse JSON object, read subtree(s) */
         do {
             r = lydjson_subtree_r(lydctx, parent, first_p, parsed);
             LY_DPARSER_ERR_GOTO(r, rc = r, lydctx, cleanup);
@@ -2082,7 +2117,7 @@ lyd_parse_json(const struct ly_ctx *ctx, struct lyd_node *parent, const struct l
     }
 
     /* finish linking metadata */
-    r = lydjson_metadata_finish(lydctx, parent ? lyd_node_child_p(parent) : first_p);
+    r = lydjson_metadata_finish(lydctx, parent ? lyd_node_child_p(parent) : first_p, parsed);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
 cleanup:
@@ -2348,7 +2383,7 @@ lyd_parse_json_restconf(const struct ly_ctx *ctx, struct lyd_node *parent, struc
     }
 
     /* finish linking metadata */
-    r = lydjson_metadata_finish(lydctx, parent ? lyd_node_child_p(parent) : first_p);
+    r = lydjson_metadata_finish(lydctx, parent ? lyd_node_child_p(parent) : first_p, parsed);
     LY_CHECK_ERR_GOTO(r, rc = r, cleanup);
 
 cleanup:
