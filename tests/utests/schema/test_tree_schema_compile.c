@@ -2284,6 +2284,7 @@ test_type_tpdf_reuse(void **state)
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
     UTEST_LOG_CTX_CLEAN;
 
+#ifdef LY_HAVE_REGEX_H
     /* module with patterns and the OC extension */
     str = "module i {yang-version 1.1; namespace urn:i; prefix i;"
             "import openconfig-extensions {prefix oc-ext;}"
@@ -2303,6 +2304,7 @@ test_type_tpdf_reuse(void **state)
     data = "<b xmlns=\"urn:i\">abc1</b>";
     CHECK_PARSE_LYD_PARAM(data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, LY_SUCCESS, tree);
     lyd_free_all(tree);
+#endif
 }
 
 static void
@@ -4340,9 +4342,7 @@ main(void)
         UTEST(test_type_leafref, setup),
         UTEST(test_type_empty, setup),
         UTEST(test_type_union, setup),
-#ifndef _WIN32
         UTEST(test_type_tpdf_reuse, setup),
-#endif
         UTEST(test_type_dflt, setup),
         UTEST(test_type_exts, setup),
         UTEST(test_status, setup),
