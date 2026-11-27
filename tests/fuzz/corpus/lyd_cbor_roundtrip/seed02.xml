@@ -1,0 +1,1 @@
+<c xmlns="urn:tests:fuzz-cbor"><b>true</b><f>3.142</f><ll>-1</ll><ll>32767</ll></c>
