@@ -1,0 +1,1 @@
+<c xmlns="urn:tests:fuzz-rt"><ll>1</ll><ll>65535</ll><l><k>key1</k><v>val</v></l><l><k>key2</k><v>val2</v></l></c>
