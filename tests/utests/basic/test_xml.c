@@ -190,6 +190,9 @@ test_text(void **state)
             " namespace \"urn:test\";"
             " prefix t;"
             " anyxml e;"
+            " leaf l {"
+            "   type string;"
+            " }"
             "}";
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, yang, LYS_IN_YANG, NULL));
@@ -224,6 +227,14 @@ test_text(void **state)
     str = "<e xmlns=\"urn:test\">€𠜎Øn \n&lt;&amp;&quot;&apos;&gt; &#82;&#x4f;&#x4B;</e>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
+    lyd_free_all(tree);
+    tree = NULL;
+
+    /* characters following a reference must be copied from the input, not from their decoded code point */
+    str = "<l xmlns=\"urn:test\">&lt;€𠜎Øn&amp;|</l>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, str, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+    assert_string_equal("<€𠜎Øn&|", lyd_get_value(tree));
     lyd_free_all(tree);
     tree = NULL;
 

@@ -514,6 +514,14 @@ test_string(void **state)
     lyd_free_all(tree);
     tree = NULL;
 
+    /* characters following an escape must be copied from the input, not from their decoded code point */
+    str = "\"\\u003c€𠜎Øn\\n|\"";
+    assert_non_null(ly_in_memory(in, str));
+    assert_int_equal(LY_SUCCESS, lyd_parse_value_fragment(ctx, "/test:l", in, LYD_JSON, 0, 0, 0, &tree));
+    assert_string_equal("<€𠜎Øn\n|", lyd_get_value(tree));
+    lyd_free_all(tree);
+    tree = NULL;
+
     /* non-hexadecimal digits in an escaped character */
     str = "\"\\u002s\"";
     assert_non_null(ly_in_memory(in, str));

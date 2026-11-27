@@ -765,7 +765,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, uint32_t
 
             if (buf) {
                 LY_CHECK_GOTO(lyxml_parse_value_use_buf(xmlctx, start, parsed, &buf, &len, &size), error);
-                memcpy(buf + len, &c, parsed);
+                memcpy(buf + len, xmlctx->in->current - parsed, parsed);
                 len += parsed;
             } else if (xmlctx->in->current - start > UINT32_MAX) {
                 LOGVAL(xmlctx->ctx, NULL, LYVE_SYNTAX, "XML value too long.");
