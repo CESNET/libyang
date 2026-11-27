@@ -870,7 +870,7 @@ test_dup(void **state)
             "<l xmlns=\"urn:tests:e\">c</l>"
             "<a xmlns=\"urn:tests:e\">aa</a>",
             LYD_XML, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Data for both cases \"a\" and \"b\" exist.", "/e:choic", 0);
+    CHECK_LOG_CTX("Data for both cases \"a\" and \"b\" exist.", "/e:l[.='a']", 0);
 }
 
 static void
@@ -1770,7 +1770,7 @@ test_case(void **state)
             "    \"g7\": \"value_g7\"\n"
             "  }\n"
             "}\n", LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.", "/k:ch/a0", 0);
+    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.", "/k:ch/g7", 0);
 
     CHECK_PARSE_LYD_PARAM(
             "{\n"
@@ -1779,7 +1779,7 @@ test_case(void **state)
             "    \"g0\": \"value_g0\"\n"
             "  }\n"
             "}\n", LYD_JSON, 0, LYD_VALIDATE_PRESENT, LY_EVALID, tree);
-    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.", "/k:ch/a0", 0);
+    CHECK_LOG_CTX("Data for both cases \"v0\" and \"v2\" exist.", "/k:ch/g7", 0);
 }
 
 static void

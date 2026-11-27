@@ -869,7 +869,7 @@ lyd_validate_cases(struct lyd_node **first, const struct lys_module *mod, const 
         struct lyd_node **diff)
 {
     const struct lysc_node *scase, *iter, *old_case = NULL, *new_case = NULL;
-    struct lyd_node *match, *to_del;
+    struct lyd_node *match, *to_del, *old_case_node;
     ly_bool found;
 
     LY_LIST_FOR((struct lysc_node *)choic->cases, scase) {
@@ -885,6 +885,7 @@ lyd_validate_cases(struct lyd_node **first, const struct lys_module *mod, const 
                 /* and old case data found */
                 if (found == 0) {
                     found = 1;
+                    old_case_node = match;
                 }
             }
         }
@@ -893,9 +894,7 @@ lyd_validate_cases(struct lyd_node **first, const struct lys_module *mod, const 
             /* there should not be 2 old cases */
             if (old_case) {
                 /* old data from 2 cases */
-                LOG_LOCSET(&choic->node);
-                LOGVAL(choic->module->ctx, NULL, LY_VCODE_DUPCASE, old_case->name, scase->name);
-                LOG_LOCBACK(1);
+                LOGVAL(choic->module->ctx, old_case_node, LY_VCODE_DUPCASE, old_case->name, scase->name);
                 return LY_EVALID;
             }
 
@@ -904,9 +903,7 @@ lyd_validate_cases(struct lyd_node **first, const struct lys_module *mod, const 
         } else if (found == 2) {
             if (new_case) {
                 /* new data from 2 cases */
-                LOG_LOCSET(&choic->node);
-                LOGVAL(choic->module->ctx, NULL, LY_VCODE_DUPCASE, new_case->name, scase->name);
-                LOG_LOCBACK(1);
+                LOGVAL(choic->module->ctx, match, LY_VCODE_DUPCASE, new_case->name, scase->name);
                 return LY_EVALID;
             }
 
