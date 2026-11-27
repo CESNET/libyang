@@ -1,5 +1,5 @@
 if(ENABLE_FUZZ_TARGETS)
-    set(fuzz_targets lys_parse_mem lyd_parse_mem_xml lyd_parse_mem_json lyd_parse_lyb lyd_parse_schema_mount_xml yang_parse_module)
+    set(fuzz_targets lys_parse_mem lyd_parse_mem_xml lyd_parse_mem_json lyd_parse_lyb lyd_parse_schema_mount_xml yang_parse_module lyd_lyb_roundtrip)
 
     if(FUZZER STREQUAL "AFL")
         foreach(target_name IN LISTS fuzz_targets)
