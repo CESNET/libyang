@@ -1,0 +1,1 @@
+<c xmlns="urn:tests:fuzz-cbor"><l><k>k1</k><v>AAECAP0=</v></l><l><k>k2</k><v>//8=</v></l><empty/></c>
