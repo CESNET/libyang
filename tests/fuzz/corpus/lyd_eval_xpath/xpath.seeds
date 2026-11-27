@@ -1,0 +1,20 @@
+/c/l[k='a']/v
+/c/l[k='b']/v
+count(/c/s)
+contains(/c/b,'true')
+not(/c/l[k='zzz'])
+/c/s[.='x']
+position() = 1
+/c/l[position() = 2]/k
+string(/c/b)
+number(/c/l[k='a']/v)
+/c/l[k='a']/v > 0
+/c/b = true()
+name(/c/*)
+/c/l[1]/k
+/c//v
+/c/s[2]
+sum(/c/l/v)
+substring(/c/b, 1, 4)
+starts-with(/c/s, 'x')
+/c/l[k='a' and v='1']
