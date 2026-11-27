@@ -875,7 +875,7 @@ lysp_match_kw(const struct ly_ctx *ctx, struct ly_in *in, enum ly_stmt *kw, uint
     }
 
     const char *start = in->current;
-    uint64_t start_indent;
+    uint64_t start_indent = 0;
 
     *kw = LY_STMT_NONE;
     if (indent) {
