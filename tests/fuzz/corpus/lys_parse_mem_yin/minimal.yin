@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module name="fuzz-yin-min"
+        xmlns="urn:ietf:params:xml:ns:yang:yin:1"
+        xmlns:fm="urn:example:fuzz-yin-min">
+  <namespace uri="urn:example:fuzz-yin-min"/>
+  <prefix value="fm"/>
+  <container name="top">
+    <leaf name="s">
+      <type value="string"/>
+    </leaf>
+  </container>
+</module>

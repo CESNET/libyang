@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module name="fuzz-yin-types"
+        xmlns="urn:ietf:params:xml:ns:yang:yin:1"
+        xmlns:ft="urn:example:fuzz-yin-types">
+  <namespace uri="urn:example:fuzz-yin-types"/>
+  <prefix value="ft"/>
+  <typedef name="pct">
+    <type value="uint8"/>
+    <range value="0..100"/>
+  </typedef>
+  <list name="l">
+    <key value="id"/>
+    <leaf name="id">
+      <type value="string"/>
+    </leaf>
+    <leaf-list name="vals">
+      <type value="pct"/>
+    </leaf-list>
+  </list>
+  <leaf name="e">
+    <type value="enumeration">
+      <enum name="a"/>
+      <enum name="b"/>
+    </type>
+  </leaf>
+  <leaf name="b">
+    <type value="bits">
+      <bit name="zero"/>
+      <bit name="one"/>
+    </type>
+  </leaf>
+</module>
