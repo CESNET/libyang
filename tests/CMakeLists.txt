@@ -5,6 +5,20 @@ configure_file("${PROJECT_SOURCE_DIR}/tests/tests_config.h.in" "${PROJECT_BINARY
 include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
 include_directories(${PROJECT_BINARY_DIR}/tests/)
 
+if(WIN32 AND BUILD_SHARED_LIBS)
+    # There is no rpath on Windows
+    get_property(YANG_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    if(YANG_MULTI_CONFIG)
+        set(YANG_DLL_TESTS_DIR "${CMAKE_BINARY_DIR}/tests/$<CONFIG>")
+    else()
+        set(YANG_DLL_TESTS_DIR "${CMAKE_BINARY_DIR}/tests")
+    endif()
+    add_custom_target(yang_dll_for_tests
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${YANG_DLL_TESTS_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:yang> "${YANG_DLL_TESTS_DIR}"
+        DEPENDS yang)
+endif()
+
 function(ly_add_utest)
     cmake_parse_arguments(ADDTEST "" "NAME;WRAP" "SOURCES" ${ARGN})
     set(TEST_NAME utest_${ADDTEST_NAME})
@@ -15,6 +29,9 @@ function(ly_add_utest)
 
     add_executable(${TEST_NAME} ${TEST_SOURCES} ${compatsrc})
     target_link_libraries(${TEST_NAME} yang ${CMOCKA_LIBRARIES})
+    if(TARGET yang_dll_for_tests)
+        add_dependencies(${TEST_NAME} yang_dll_for_tests)
+    endif()
 
     # Set common attributes of all tests
     set_target_properties(${TEST_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
