@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module name="fuzz-yin-xpath"
+        xmlns="urn:ietf:params:xml:ns:yang:yin:1"
+        xmlns:fx="urn:example:fuzz-yin-xpath">
+  <namespace uri="urn:example:fuzz-yin-xpath"/>
+  <prefix value="fx"/>
+  <leaf name="enabled">
+    <type value="boolean"/>
+  </leaf>
+  <container name="c">
+    <must condition="../enabled = &apos;true&apos;"/>
+    <uses name="g"/>
+  </container>
+  <grouping name="g">
+    <leaf name="gl">
+      <type value="int32"/>
+    </leaf>
+  </grouping>
+  <leaf name="w">
+    <type value="empty"/>
+    <when condition="../enabled = &apos;true&apos;"/>
+  </leaf>
+</module>
