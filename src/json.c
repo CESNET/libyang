@@ -401,7 +401,7 @@ lyjson_string(struct lyjson_ctx *jsonctx)
 
             if (buf) {
                 LY_CHECK_GOTO(lyjson_string_use_buf(jsonctx, start, u, &buf, &len, &size), error);
-                memcpy(buf + len, &value, u);
+                memcpy(buf + len, jsonctx->in->current - u, u);
                 len += u;
             } else if (jsonctx->in->current - start > UINT32_MAX) {
                 LOGVAL(ctx, NULL, LYVE_SYNTAX, "JSON string too long.");
